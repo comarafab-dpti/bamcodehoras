@@ -1,5 +1,24 @@
 export type Branch = 'KO' | 'BE' | 'MN' | 'SP' | 'RJ';
 
+export type TipoUnidadeOrganizacional = 'SEDE' | 'DACO' | 'DECO' | 'SETOR' | 'NAO_CLASSIFICADO';
+
+export interface UnidadeOrganizacional {
+  codigo: string;             // Ex: 'DECO_KO', 'SEDE_BE', 'SETOR_SUPRIMENTOS'
+  nome: string;               // Ex: 'Destacamento de Engenharia de Coari'
+  siglaExibicao: string;      // Ex: 'DECO-KO'
+  tipo: TipoUnidadeOrganizacional;
+  sedeOuCanteiroPadrao?: string; // Ex: 'KO', 'MN', 'BE'
+  pai?: string;               // Ex: 'SEDE_BE', 'DECO_KO', 'COMARA'
+  ativa: boolean;
+  descricao?: string;
+}
+
+export interface ResultadoNormalizacaoUO {
+  codigoOriginal: string;
+  unidade: UnidadeOrganizacional;
+  confianca: 'ALTA' | 'MEDIA' | 'NAO_CLASSIFICADO';
+}
+
 export type EmployeeStatus = 'Ativo' | 'Inativo' | 'Afastado' | 'Férias';
 
 export type GrauInsalubridade = 'ISENTO' | '10%' | '20%' | '40%';
@@ -148,6 +167,7 @@ export interface AdminUser {
   postoGraduacao?: string;
   funcao?: string;
   canteiroSede?: string;
+  uoGestao?: string;
   ativo: boolean;
   passwordHash?: string;
   senha?: string;
@@ -187,6 +207,8 @@ export interface Employee {
   sede: Branch; // Sede padrão/fixa
   sede_origem?: Branch; // Sede contratual / fixa
   sede_atual?: Branch; // Canteiro / sede temporária
+  lotacao?: string; // UO de lotação administrativa (ex: SEDE_BE, SETOR_DL, DECO_KO)
+  uoExecucao?: string; // UO ou canteiro de execução operacional efetiva (ex: DECO_KO)
   secaoLotacao?: string;
   canteiroId?: string; // ID do canteiro/construção site (FK para ConstructionSite.id)
   dataInicioAlocacao?: string; // Início da missão
@@ -205,6 +227,11 @@ export interface Employee {
   horarioTrabalho?: string;
   email?: string;
   telefone?: string;
+  celular?: string;
+  dataNascimento?: string;
+  dataDemissao?: string;
+  pis?: string;
+  codigoExterno?: string;
   cpf?: string; // CPF em texto plano (retirado em futuras versões para LGPD)
   cpfHash?: string; // Hash SHA-256 do CPF limpo (para desduplicação segura)
   cpfMascarado?: string; // CPF mascarado (ex: ***.XXX.XXX-**)

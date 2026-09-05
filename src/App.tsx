@@ -46,9 +46,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { rbacService } from './services/rbacService';
 import { registrarLogAuditoria } from './services/auditService';
 import { competenciaService, CompetenciaControle } from './services/competenciaService';
-import { CompetenciaStatusBar } from './components/CompetenciaStatusBar';
 import { CompetenciaManagementModal } from './components/CompetenciaManagementModal';
-import { CanteiroLockBanner } from './components/CanteiroLockBanner';
 import {
   getCompetenciaAnterior,
   normalizarCanteiroId,
@@ -1988,26 +1986,6 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1880px] w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6">
-        {/* Barra de Gestão Contábil de Competência (Homologação & Transporte de Saldos) */}
-        <div className="mb-6">
-          <CompetenciaStatusBar
-            competencia={currentCompetencia}
-            controle={competenciaControle}
-            onSelectCompetencia={handleSelectCompetencia}
-            onOpenManagementModal={() => setIsCompetenciaModalOpen(true)}
-            isGlobalAdmin={isGlobalUser}
-            theme={theme}
-          />
-          <CanteiroLockBanner
-            competencia={currentCompetencia}
-            competenciaAnterior={getCompetenciaAnterior(currentCompetencia)}
-            canteiroId={activeCanteiro || currentUser?.canteiroCodigo}
-            statusCanteiros={competenciaAnteriorControle?.statusCanteiros}
-            isSuperAdmin={isSuperAdminSession}
-            theme={theme}
-          />
-        </div>
-
         <ErrorBoundary fallbackTitle="Erro ao carregar aba selecionada">
           {activeTab === 'dashboard' && (
             <LookerDashboard
@@ -2027,6 +2005,13 @@ export default function App() {
               onClearData={handleTriggerClearDataSafety}
               userRole={userRole}
               theme={theme}
+              currentCompetencia={currentCompetencia}
+              competenciaControle={competenciaControle}
+              competenciaAnteriorControle={competenciaAnteriorControle}
+              onSelectCompetencia={handleSelectCompetencia}
+              onOpenCompetenciaModal={() => setIsCompetenciaModalOpen(true)}
+              activeCanteiro={activeCanteiro || currentUser?.canteiroCodigo}
+              isSuperAdmin={isSuperAdminSession}
             />
           )}
 

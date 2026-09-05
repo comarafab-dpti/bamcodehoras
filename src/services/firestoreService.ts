@@ -101,6 +101,15 @@ export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<stri
     data_inicio_status: emp.data_inicio_status || emp.dataInicioStatus || '',
     data_fim_status: emp.data_fim_status || emp.dataFimStatus || '',
     observacao_status: emp.observacao_status || emp.motivoStatus || '',
+    lotacao: emp.lotacao || '',
+    uoExecucao: emp.uoExecucao || '',
+    secaoLotacao: emp.secaoLotacao || '',
+    departamento: emp.departamento || '',
+    celular: emp.celular || '',
+    dataNascimento: emp.dataNascimento || '',
+    dataDemissao: emp.dataDemissao || '',
+    pis: emp.pis || '',
+    codigoExterno: emp.codigoExterno || '',
     atualizadoEm: new Date().toISOString(),
   });
 }

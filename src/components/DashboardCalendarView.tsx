@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Employee, TimeRecord, Branch } from '../types';
 import { formatHoursDecimal } from '../utils/calculations';
 import { 
@@ -16,7 +16,9 @@ import {
   Layers,
   CheckCircle2,
   AlertCircle,
-  Zap
+  Zap,
+  CalendarCheck,
+  X
 } from 'lucide-react';
 
 interface DashboardCalendarViewProps {
@@ -83,6 +85,8 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSede, setFilterSede] = useState<string>('TODAS');
   const [filterFuncao, setFilterFuncao] = useState<string>('TODAS');
+  // Filtro por data/dia selecionado ao clicar no cabeçalho do calendário
+  const [selectedDayFilter, setSelectedDayFilter] = useState<string | null>(null);
 
   const daysCount = viewMode === '7_DAYS' ? 7 : 14;
 
@@ -116,6 +120,16 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
     }
     return days;
   }, [startDate, daysCount]);
+
+  // Se o dia filtrado não está mais no período visível (ex: navegação de período), limpa o filtro
+  useEffect(() => {
+    if (selectedDayFilter) {
+      const isVisible = daysInPeriod.some(d => d.dateIso === selectedDayFilter);
+      if (!isVisible) {
+        setSelectedDayFilter(null);
+      }
+    }
+  }, [daysInPeriod, selectedDayFilter]);
 
   // End date of period
   const endDate = useMemo(() => {
@@ -158,22 +172,6 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
     return Array.from(f).sort();
   }, [employees]);
 
-  // Filtered employees
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) => {
-      if (filterSede !== 'TODAS' && (emp.sede_atual || emp.sede) !== filterSede) return false;
-      if (filterFuncao !== 'TODAS' && emp.funcao !== filterFuncao) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const mMat = (emp.matricula || '').toLowerCase().includes(q);
-        const mNom = (emp.nome || '').toLowerCase().includes(q);
-        const mFun = (emp.funcao || '').toLowerCase().includes(q);
-        if (!mMat && !mNom && !mFun) return false;
-      }
-      return true;
-    });
-  }, [employees, filterSede, filterFuncao, searchQuery]);
-
   // Normalization helper for record dates
   const normalizeRecDate = (r: TimeRecord): string => {
     const raw = r.dataRegistro || r.data_ocorrencia || (r as any).data || (r as any).date || r.criadoEm || '';
@@ -205,6 +203,45 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
 
     return map;
   }, [records, daysInPeriod]);
+
+  // Contagem de colaboradores com lançamentos em cada dia do período visível
+  const dayEmployeeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    daysInPeriod.forEach((d) => {
+      let count = 0;
+      employees.forEach((emp) => {
+        const mat = (emp.matricula || '').trim().toUpperCase();
+        const key = `${mat}_${d.dateIso}`;
+        const recs = recordsMap.get(key);
+        if (recs && recs.length > 0) count++;
+      });
+      counts.set(d.dateIso, count);
+    });
+    return counts;
+  }, [daysInPeriod, employees, recordsMap]);
+
+  // Filtered employees (respeita busca, sede, função e dia selecionado no cabeçalho)
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      if (filterSede !== 'TODAS' && (emp.sede_atual || emp.sede) !== filterSede) return false;
+      if (filterFuncao !== 'TODAS' && emp.funcao !== filterFuncao) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const mMat = (emp.matricula || '').toLowerCase().includes(q);
+        const mNom = (emp.nome || '').toLowerCase().includes(q);
+        const mFun = (emp.funcao || '').toLowerCase().includes(q);
+        if (!mMat && !mNom && !mFun) return false;
+      }
+      // Filtro por Data/Dia específico selecionado no cabeçalho
+      if (selectedDayFilter) {
+        const cleanMat = (emp.matricula || '').trim().toUpperCase();
+        const dayKey = `${cleanMat}_${selectedDayFilter}`;
+        const dayRecords = recordsMap.get(dayKey);
+        if (!dayRecords || dayRecords.length === 0) return false;
+      }
+      return true;
+    });
+  }, [employees, filterSede, filterFuncao, searchQuery, selectedDayFilter, recordsMap]);
 
   // Period Statistics
   const periodStats = useMemo(() => {
@@ -258,9 +295,16 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
     const mult = Number(rec.multiplicador) || 1;
     const itemKey = rec.id ? `rec_${rec.id}` : `rec_${rec.matricula}_${rec.dataRegistro}_${rec.tipoOcorrencia}_${index}`;
 
-    if (isNaN(saldo) || (saldo === 0 && horasBrutas > 0)) {
-      if (rec.tipoOcorrencia === 'TRABALHO') saldo = horasBrutas * mult;
-      else if (rec.tipoOcorrencia === 'COMPENSACAO' || rec.tipoOcorrencia === 'DISPENSA_OPERACIONAL') saldo = -(horasBrutas > 0 ? horasBrutas : 8.0);
+    if (isNaN(saldo) || (saldo === 0 && horasBrutas !== 0)) {
+      if (rec.tipoOcorrencia === 'TRABALHO') {
+        saldo = horasBrutas * mult;
+      } else if (
+        rec.tipoOcorrencia === 'COMPENSACAO' ||
+        rec.tipoOcorrencia === 'DISPENSA_OPERACIONAL' ||
+        (rec.tipoOcorrencia as string) === 'DISPENSA_SPTF'
+      ) {
+        saldo = -(Math.abs(horasBrutas) > 0 ? Math.abs(horasBrutas) : 8.0);
+      }
     }
 
     const handleClickPill = (e: React.MouseEvent) => {
@@ -276,6 +320,14 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
     switch (rec.tipoOcorrencia) {
       case 'TRABALHO': {
         const isPositive = saldo > 0;
+        const isNegative = saldo < 0 || horasBrutas < 0;
+        const val = saldo !== 0 ? saldo : horasBrutas;
+        const displayHours = isPositive
+          ? `+${saldo.toFixed(1)}h`
+          : isNegative
+          ? Number.isInteger(val) ? `${val}h` : `${val.toFixed(1)}h`
+          : `${horasBrutas}h`;
+
         return (
           <button
             key={itemKey}
@@ -287,12 +339,16 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
                 ? isDark
                   ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 hover:bg-emerald-800 hover:text-white'
                   : 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                : isNegative
+                ? isDark
+                  ? 'bg-orange-950/80 text-orange-300 border border-orange-600/60 hover:bg-orange-800 hover:text-white'
+                  : 'bg-orange-100 text-orange-800 border border-orange-300 hover:bg-orange-200'
                 : isDark
                 ? 'bg-blue-950/80 text-blue-300 border border-blue-700/60 hover:bg-blue-800 hover:text-white'
                 : 'bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200'
             }`}
           >
-            {saldo > 0 ? `+${saldo.toFixed(1)}h` : `${horasBrutas}h`}
+            {displayHours}
           </button>
         );
       }
@@ -340,31 +396,49 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
         );
       case 'COMPENSACAO':
       case 'DISPENSA_OPERACIONAL':
+      case 'DISPENSA_SPTF': {
+        const val = saldo < 0 ? saldo : (horasBrutas > 0 ? -horasBrutas : -8.0);
+        const text = Number.isInteger(val) ? `${val}h` : `${val.toFixed(1)}h`;
         return (
           <button
             key={itemKey}
             type="button"
             onClick={handleClickPill}
-            title={`Clique para editar: Folga / Compensação (${saldo.toFixed(1)}h)${rec.observacao ? ` • ${rec.observacao}` : ''}`}
+            title={`Clique para editar: Folga / Compensação (${val.toFixed(1)}h)${rec.observacao ? ` • ${rec.observacao}` : ''}`}
             className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold leading-tight cursor-pointer transition-all active:scale-[0.98] hover:scale-105 ${
-              isDark ? 'bg-purple-950/80 text-purple-300 border border-purple-700/60 hover:bg-purple-800 hover:text-white' : 'bg-purple-100 text-purple-800 border border-purple-300 hover:bg-purple-200'
+              isDark
+                ? 'bg-orange-950/80 text-orange-300 border border-orange-600/60 hover:bg-orange-800 hover:text-white'
+                : 'bg-orange-100 text-orange-800 border border-orange-300 hover:bg-orange-200'
             }`}
           >
-            {saldo < 0 ? `${saldo.toFixed(1)}h` : 'COMP'}
+            {text}
           </button>
         );
-      default:
+      }
+      default: {
+        const isNegative = saldo < 0 || horasBrutas < 0;
+        const val = saldo !== 0 ? saldo : horasBrutas;
+        const text = isNegative
+          ? (Number.isInteger(val) ? `${val}h` : `${val.toFixed(1)}h`)
+          : `${horasBrutas}h`;
         return (
           <button
             key={itemKey}
             type="button"
             onClick={handleClickPill}
             title={`Clique para editar: ${horasBrutas}h`}
-            className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-mono bg-gray-500/20 text-gray-400 cursor-pointer hover:bg-gray-500/40"
+            className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold leading-tight cursor-pointer transition-all active:scale-[0.98] hover:scale-105 ${
+              isNegative
+                ? isDark
+                  ? 'bg-orange-950/80 text-orange-300 border border-orange-600/60 hover:bg-orange-800 hover:text-white'
+                  : 'bg-orange-100 text-orange-800 border border-orange-300 hover:bg-orange-200'
+                : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/40'
+            }`}
           >
-            {horasBrutas}h
+            {text}
           </button>
         );
+      }
     }
   };
 
@@ -527,6 +601,10 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
             <span>Trabalho / HE (+Horas)</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+            <span>Débito / Folga / Compensação (-Horas)</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
             <span>Atestado Médico (AT)</span>
           </span>
@@ -537,10 +615,6 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
           <span className="inline-flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>
             <span>Férias</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-            <span>Folga / Compensação</span>
           </span>
         </div>
 
@@ -558,6 +632,34 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* BANNER DE FILTRO ATIVO POR DIA                                */}
+      {/* ------------------------------------------------------------- */}
+      {selectedDayFilter && (
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs flex-wrap transition-all shadow-xs animate-in fade-in-50 ${
+          isDark ? 'bg-blue-950/40 border-blue-500/40 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-900'
+        }`}>
+          <div className="flex items-center gap-2.5 font-bold">
+            <div className={`p-1.5 rounded-lg ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-600 text-white'}`}>
+              <CalendarCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <span>
+                Filtrando colaboradores com lançamentos no <strong>Dia {selectedDayFilter.split('-')[2]}/{selectedDayFilter.split('-')[1]}/{selectedDayFilter.split('-')[0]}</strong> ({filteredEmployees.length} {filteredEmployees.length === 1 ? 'colaborador encontrado' : 'colaboradores encontrados'})
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedDayFilter(null)}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer shadow-xs"
+            title="Limpar filtro de dia"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Limpar Filtro de Dia</span>
+          </button>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* GRADE DA TABELA COM NAVEGAÇÃO NAS EXTREMIDADES                */}
@@ -594,32 +696,65 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
                 </div>
               </th>
 
-              {/* Colunas de Datas Proporcionais */}
-              {daysInPeriod.map((day) => (
-                <th
-                  key={day.dateIso}
-                  className={`py-2 px-1 text-center font-mono border-l transition-colors ${
-                    viewMode === '7_DAYS' ? 'min-w-[85px] sm:min-w-[95px]' : 'min-w-[62px] sm:min-w-[70px]'
-                  } ${
-                    day.isToday
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 font-bold'
-                      : day.isSunday
-                      ? isDark ? 'bg-rose-950/20 text-rose-300 border-[#243756]' : 'bg-rose-50 text-rose-700 border-gray-200'
-                      : day.isSaturday
-                      ? isDark ? 'bg-amber-950/20 text-amber-300 border-[#243756]' : 'bg-amber-50 text-amber-700 border-gray-200'
-                      : isDark ? 'border-[#243756]' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase ${day.isSunday ? 'text-rose-400' : day.isSaturday ? 'text-amber-400' : 'opacity-70'}`}>
-                      {day.dayName}
-                    </span>
-                    <span className={`text-xs sm:text-sm font-black tracking-tight ${day.isToday ? 'text-blue-400' : ''}`}>
-                      {String(day.dayNumber).padStart(2, '0')}/{day.monthNameShort}
-                    </span>
-                  </div>
-                </th>
-              ))}
+              {/* Colunas de Datas Proporcionais - Clicáveis para filtrar */}
+              {daysInPeriod.map((day) => {
+                const isDaySelected = selectedDayFilter === day.dateIso;
+                const empsWithRecordsOnDay = dayEmployeeCounts.get(day.dateIso) || 0;
+
+                return (
+                  <th
+                    key={day.dateIso}
+                    onClick={() => {
+                      setSelectedDayFilter((prev) => (prev === day.dateIso ? null : day.dateIso));
+                    }}
+                    className={`py-2 px-1 text-center font-mono border-l transition-all select-none cursor-pointer group ${
+                      viewMode === '7_DAYS' ? 'min-w-[85px] sm:min-w-[95px]' : 'min-w-[62px] sm:min-w-[70px]'
+                    } ${
+                      isDaySelected
+                        ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400 z-30 scale-[1.02]'
+                        : day.isToday
+                        ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 font-bold hover:bg-blue-500/30'
+                        : day.isSunday
+                        ? isDark ? 'bg-rose-950/20 text-rose-300 border-[#243756] hover:bg-blue-500/10' : 'bg-rose-50 text-rose-700 border-gray-200 hover:bg-blue-50'
+                        : day.isSaturday
+                        ? isDark ? 'bg-amber-950/20 text-amber-300 border-[#243756] hover:bg-blue-500/10' : 'bg-amber-50 text-amber-700 border-gray-200 hover:bg-blue-50'
+                        : isDark ? 'border-[#243756] hover:bg-blue-500/10 text-gray-300' : 'border-gray-200 hover:bg-blue-50 text-gray-700'
+                    }`}
+                    title={`Clique para ${isDaySelected ? 'desativar o filtro deste dia' : `filtrar colaboradores com lançamentos em ${day.dayNumber}/${day.monthNameShort}`}${empsWithRecordsOnDay > 0 ? ` (${empsWithRecordsOnDay} com lançamento)` : ' (sem lançamentos)'}`}
+                  >
+                    <div className="flex flex-col items-center justify-center relative">
+                      <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase ${
+                        isDaySelected ? 'text-white' : day.isSunday ? 'text-rose-400' : day.isSaturday ? 'text-amber-400' : 'opacity-70'
+                      }`}>
+                        {day.dayName}
+                      </span>
+                      <span className={`text-xs sm:text-sm font-black tracking-tight ${
+                        isDaySelected ? 'text-white underline decoration-2' : day.isToday ? 'text-blue-400' : ''
+                      }`}>
+                        {String(day.dayNumber).padStart(2, '0')}/{day.monthNameShort}
+                      </span>
+
+                      {/* Contador ou Indicador de Filtro Ativo */}
+                      {isDaySelected ? (
+                        <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.2 rounded-full bg-white/20 text-[8px] sm:text-[9px] font-black uppercase text-white tracking-wider">
+                          <Filter className="w-2.5 h-2.5" />
+                          <span>{filteredEmployees.length}</span>
+                        </span>
+                      ) : empsWithRecordsOnDay > 0 ? (
+                        <span className={`inline-flex items-center gap-0.5 mt-0.5 px-1 py-0.2 rounded text-[8px] sm:text-[9px] font-mono transition-opacity ${
+                          isDark ? 'bg-blue-900/40 text-blue-300 group-hover:bg-blue-800' : 'bg-blue-100 text-blue-700 group-hover:bg-blue-200'
+                        }`}>
+                          {empsWithRecordsOnDay} {empsWithRecordsOnDay === 1 ? 'colab' : 'colabs'}
+                        </span>
+                      ) : (
+                        <span className="text-[8px] opacity-0 group-hover:opacity-40 transition-opacity mt-0.5 font-mono">
+                          0
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
 
               {/* Botão de Avançar Período na extremidade direita do cabeçalho */}
               <th className={`py-3 px-2 text-center w-28 min-w-[95px] max-w-[115px] border-l ${
@@ -647,8 +782,24 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
           }`}>
             {filteredEmployees.length === 0 ? (
               <tr>
-                <td colSpan={daysInPeriod.length + 2} className="py-14 text-center text-gray-500 font-mono">
-                  Nenhum colaborador encontrado para os filtros selecionados.
+                <td colSpan={daysInPeriod.length + 2} className="py-14 text-center font-mono">
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto px-4">
+                    <Users className="w-8 h-8 opacity-40 text-blue-400" />
+                    <p className={`text-xs sm:text-sm font-sans ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {selectedDayFilter
+                        ? `Nenhum colaborador possui lançamento registrado no dia ${selectedDayFilter.split('-')[2]}/${selectedDayFilter.split('-')[1]}/${selectedDayFilter.split('-')[0]}.`
+                        : 'Nenhum colaborador encontrado para os filtros selecionados.'}
+                    </p>
+                    {selectedDayFilter && (
+                      <button
+                        onClick={() => setSelectedDayFilter(null)}
+                        className="mt-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all active:scale-[0.98] cursor-pointer shadow-xs flex items-center gap-1.5 font-sans"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Limpar Filtro de Dia</span>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -725,6 +876,7 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
                     {daysInPeriod.map((day) => {
                       const key = `${cleanMat}_${day.dateIso}`;
                       const dayRecords = recordsMap.get(key) || [];
+                      const isColSelected = selectedDayFilter === day.dateIso;
 
                       return (
                         <td
@@ -737,7 +889,11 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
                             }
                           }}
                           className={`p-1.5 text-center border-l transition-all active:scale-[0.98] cursor-pointer group align-middle ${
-                            day.isToday
+                            isColSelected
+                              ? isDark
+                                ? 'bg-blue-600/15 border-blue-500/30 ring-1 ring-blue-500/20'
+                                : 'bg-blue-50/80 border-blue-200 ring-1 ring-blue-500/20'
+                              : day.isToday
                               ? 'bg-blue-500/5'
                               : day.isSunday
                               ? isDark ? 'bg-rose-950/5' : 'bg-rose-50/40'

@@ -51,6 +51,7 @@ import { InfoTooltip } from './InfoTooltip';
 import { IconButton } from './IconButton';
 import { PortariaAttendanceSheetModal } from './PortariaAttendanceSheetModal';
 import { EmployeeFormModal } from './EmployeeFormModal';
+import { ImportarColaboradoresModal } from './ImportarColaboradoresModal';
 import { DispensaSptfRecord } from '../types';
 
 interface EmployeeManagementProps {
@@ -138,6 +139,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [isPortariaModalOpen, setIsPortariaModalOpen] = useState(false);
+  const [isImportUoModalOpen, setIsImportUoModalOpen] = useState(false);
 
   // -------------------------------------------------------------
   // CONTAGENS DE SALDO (PILLS KPI COUNTER)
@@ -505,6 +507,21 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 Negativos ({balanceCounts.devedor})
               </button>
             </div>
+
+            {/* Ação Rápida Mobile: Importar CSV Legado com UOs */}
+            <button
+              type="button"
+              id="btn-mobile-importar-uo-legado"
+              onClick={() => setIsImportUoModalOpen(true)}
+              className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all active:scale-[0.98] cursor-pointer shadow-xs ${
+                isDark 
+                  ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 hover:bg-blue-600/30' 
+                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-blue-400" />
+              Importar CSV Legado (UOs & Conciliação)
+            </button>
           </div>
 
           {/* Lista Mobile Enxuta (Cards de Linha Única) */}
@@ -651,6 +668,16 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   {isImporting ? 'Processando importação...' : 'Importar Arquivo CSV de Colaboradores'}
                 </div>
               </div>
+
+              <IconButton
+                id="btn-colaboradores-importar-uo-legado"
+                icon={Layers}
+                variant="primary"
+                size="md"
+                tooltip="Importar CSV Legado (UOs, Normalização & Conciliação Interativa)"
+                aria-label="Importar CSV Legado UO"
+                onClick={() => setIsImportUoModalOpen(true)}
+              />
 
               <IconButton
                 icon={UserPlus}
@@ -1305,6 +1332,21 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         constructionSites={constructionSites}
         defaultSede={filterSede !== 'TODAS' ? filterSede : 'KO'}
         theme={theme}
+      />
+
+      {/* Modal de Importação, Preview e Conciliação Interativa de Colaboradores (Etapa 3b) */}
+      <ImportarColaboradoresModal
+        isOpen={isImportUoModalOpen}
+        onClose={() => setIsImportUoModalOpen(false)}
+        colaboradoresExistentes={employees}
+        theme={theme}
+        onImportSuccess={(importados) => {
+          // Atualiza lista em memória sem necessidade de releitura do Firestore
+          const mapa = new Map<string, Employee>();
+          employees.forEach(e => mapa.set((e.matricula || e.id).toUpperCase(), e));
+          importados.forEach(e => mapa.set((e.matricula || e.id).toUpperCase(), e));
+          onUpdateEmployees(Array.from(mapa.values()));
+        }}
       />
     </>
   );
