@@ -1,13 +1,18 @@
 /**
- * CSV Import Helper with Employee Sync Service
- * 
- * Example integration of employeeSyncService with CSV import flow
- * This extends the existing parseEmployeesCSV functionality
+ * CSV Import Helper legado, mantido apenas por compatibilidade de API.
+ * O fluxo ativo é importacaoColaboradores.ts + classificacaoInterativa.ts.
  */
 
 import { Employee, ConstructionSite } from '../types';
 import { getRowValue, parseDateCell } from './csvHandler';
-import { employeeSyncService, EmployeeSyncResult, getSyncStatistics } from '../services/employeeSyncService';
+type EmployeeSyncResult = {
+  success: boolean;
+  action: 'created' | 'updated' | 'skipped';
+  employeeId: string;
+  matricula: string;
+  nome: string;
+  message: string;
+};
 
 /**
  * Extended result of CSV import with sync details
@@ -28,7 +33,7 @@ export interface CSVSyncImportResult {
 }
 
 /**
- * Parses a CSV file and syncs employees using employeeSyncService
+ * Mantido somente para compatibilidade; não sincroniza colaboradores.
  * 
  * Expected CSV columns:
  * - Matricula / Matrícula / Employee ID
@@ -176,30 +181,12 @@ export async function parseAndSyncEmployeesFromCSV(
       };
     }
 
-    // Sync employees using employeeSyncService
-    const syncResults = await employeeSyncService.batchSyncEmployees(
-      employees,
-      departmentMap,
-      constructionSites,
-      (progress) => {
-        if (onProgress) {
-          onProgress({
-            processed: progress.processed,
-            total: progress.total,
-            percent: progress.percent
-          });
-        }
-      }
-    );
-
-    const stats = employeeSyncService.getSyncStatistics(syncResults);
-
     return {
-      success: stats.failed === 0,
+      success: false,
       totalRows: employees.length,
-      syncResults,
-      statistics: stats,
-      warnings
+      syncResults: [],
+      statistics: { total: 0, created: 0, updated: 0, skipped: 0, successful: 0, failed: employees.length },
+      warnings: [...warnings, 'Fluxo legado descontinuado na Fase C. Use importacaoColaboradores.ts + classificacaoInterativa.ts.']
     };
 
   } catch (err: any) {

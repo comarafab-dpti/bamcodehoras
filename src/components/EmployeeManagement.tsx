@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Employee, TimeRecord, Branch, EmployeeStatus, ConstructionSite } from '../types';
-import { parseEmployeesCSV, generateEmployeesTemplateCSV, triggerFileDownload } from '../utils/csvHandler';
+import { generateEmployeesTemplateCSV, triggerFileDownload } from '../utils/csvHandler';
 import { getEmployeeTotalBalance, formatHoursDecimal, formatHoursToDays } from '../utils/calculations';
 import { firestoreService } from '../services/firestoreService';
 import { authService } from '../services/authService';
-import { batchSyncEmployees, getSyncStatistics } from '../services/employeeSyncService';
 import { 
   Users, 
   UploadCloud, 
@@ -114,7 +113,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
 
   const availableSetores = useMemo(() => Array.from(new Set(
     employees
-      .map((emp) => emp.lotacao || emp.secaoLotacao || emp.departamento || '')
+      .map((emp) => emp.lotacaoUoCodigo || '')
       .map((value) => value.trim())
       .filter(Boolean)
   )).sort((a, b) => a.localeCompare(b, 'pt-BR')), [employees]);
@@ -180,11 +179,11 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
       })
       .filter(({ emp, bal }) => {
         // 1. Filtro de Sede
-        if (filterSede !== 'TODAS' && emp.sede !== filterSede && emp.sede_atual !== filterSede) {
+        if (filterSede !== 'TODAS' && emp.sedeCodigo !== filterSede) {
           return false;
         }
 
-        const setor = emp.lotacao || emp.secaoLotacao || emp.departamento || '';
+        const setor = emp.lotacaoUoCodigo || '';
         if (filterSetor !== 'TODOS' && setor !== filterSetor) return false;
 
         // 2. Filtro de Status Contratual
@@ -209,7 +208,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           const matchMat = emp.matricula.toLowerCase().includes(q);
           const matchNome = emp.nome.toLowerCase().includes(q);
           const matchFunc = (emp.funcao || emp.cargo || '').toLowerCase().includes(q);
-          const matchUo = [emp.lotacao, emp.secaoLotacao, emp.uoExecucao, emp.departamento]
+          const matchUo = [emp.sedeCodigo, emp.lotacaoUoCodigo, emp.uoExecucaoCodigo, emp.canteiroExecucaoId, emp.departamentoOriginal]
             .some((value) => (value || '').toLowerCase().includes(q));
           if (!matchMat && !matchNome && !matchFunc && !matchUo) {
             return false;
@@ -235,7 +234,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             comparison = (a.emp.funcao || '').localeCompare(b.emp.funcao || '', 'pt-BR', { sensitivity: 'base' });
             break;
           case 'sede':
-            comparison = (a.emp.sede || '').localeCompare(b.emp.sede || '', 'pt-BR');
+            comparison = (a.emp.sedeCodigo || '').localeCompare(b.emp.sedeCodigo || '', 'pt-BR');
             break;
           case 'dataAdmissao':
             comparison = (a.emp.dataAdmissao || '').localeCompare(b.emp.dataAdmissao || '');
@@ -309,104 +308,12 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsImporting(true);
-    setImportFeedback(null);
-    setImportProgress({
-      processed: 0,
-      total: 0,
-      percent: 0,
-      statusText: 'Lendo e validando estrutura do arquivo CSV...'
+    e.target.value = '';
+    setImportFeedback({
+      success: false,
+      message: 'O fluxo CSV legado foi descontinuado. Use Importar CSV (UOs & Conciliação) para o upsert oficial.',
     });
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const content = event.target?.result as string;
-        const parseResult = await parseEmployeesCSV(content, employees, 'update');
-
-        if (!parseResult.success || parseResult.data.length === 0) {
-          setImportFeedback({
-            success: false,
-            message: `Falha na importação do CSV. Verifique a formatação do arquivo.`,
-            errors: parseResult.errors,
-          });
-          setIsImporting(false);
-          setImportProgress(null);
-          if (fileInputRef.current) fileInputRef.current.value = '';
-          return;
-        }
-
-        const totalItems = parseResult.data.length;
-        setImportProgress({
-          processed: 0,
-          total: totalItems,
-          percent: 0,
-          statusText: `Preparando sincronização de ${totalItems} colaborador(es)...`
-        });
-
-        // Create department code map for each employee
-        // Parse from sede field or departamento field (which contains the department code)
-        const departmentCodesMap: Record<string, string | undefined> = {};
-        parseResult.data.forEach((emp) => {
-          // Map departmentCode from the parsed employee data
-          departmentCodesMap[emp.matricula] = emp.departamento || emp.sede || 'KO';
-        });
-
-        // Perform batch sync with Firestore using new UPSERT logic
-        const syncResults = await batchSyncEmployees(
-          parseResult.data,
-          departmentCodesMap,
-          constructionSites || [],
-          (progress) => {
-            const currentEmp = parseResult.data[progress.processed - 1];
-            const empLabel = currentEmp?.nome ? `${currentEmp.nome} (${currentEmp.matricula || ''})` : undefined;
-            setImportProgress({
-              processed: progress.processed,
-              total: progress.total,
-              percent: progress.percent,
-              currentName: empLabel,
-              statusText: `Sincronizando colaboradores no Firestore (${progress.processed}/${progress.total})...`
-            });
-          }
-        );
-
-        const stats = getSyncStatistics(syncResults);
-
-        setImportProgress({
-          processed: totalItems,
-          total: totalItems,
-          percent: 100,
-          statusText: 'Atualizando base de dados em tempo real...'
-        });
-
-        // Reload all employees from Firestore to reflect changes
-        const allEmployees = await firestoreService.getAllEmployees();
-        onUpdateEmployees(allEmployees);
-
-        setImportFeedback({
-          success: stats.successful > 0,
-          message: `Importação concluída! Criados: ${stats.created} | Atualizados: ${stats.updated} | Falhados: ${stats.failed}`,
-          errors: syncResults
-            .filter((r) => !r.success)
-            .map((r) => `${r.matricula} (${r.nome}): ${r.message}`),
-        });
-      } catch (err: any) {
-        console.error('Erro na importação CSV:', err);
-        setImportFeedback({
-          success: false,
-          message: `Erro ao processar importação: ${err.message}`,
-          errors: [err.message],
-        });
-      } finally {
-        setIsImporting(false);
-        setImportProgress(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-    reader.readAsText(file, 'UTF-8');
+    setIsImportUoModalOpen(true);
   };
 
   const handleOpenAddModal = () => {
@@ -1072,10 +979,15 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       title="Clique para ordenar por Sede"
                     >
                       <div className="flex items-center gap-1">
-                        <span>Lotação / Canteiro</span>
+                        <span>Sede</span>
                         {renderSortIcon('sede')}
                       </div>
                     </th>
+
+                    <th className="py-3 px-4">Lotação</th>
+                    <th className="py-3 px-4">UO Execução</th>
+                    <th className="py-3 px-4">Canteiro</th>
+                    <th className="py-3 px-4">Departamento Original</th>
 
                     {/* 5. Data Admissão */}
                     <th 
@@ -1133,7 +1045,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 }`}>
                   {filteredAndSortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                      <td colSpan={13} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                         <div className="flex flex-col items-center justify-center gap-2">
                           <AlertCircle className="w-6 h-6 text-gray-500" />
                           <p className="font-semibold text-sm">Nenhum colaborador localizado com os filtros selecionados.</p>
@@ -1201,36 +1113,27 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                             {emp.funcao}
                           </td>
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="flex flex-col gap-1 items-start">
-                              <span className={`px-2 py-0.5 font-bold rounded text-[10px] border ${
-                                isDark 
-                                  ? 'bg-[#243756] text-blue-400 border-[#335075]' 
-                                  : 'bg-blue-50 text-blue-700 border-blue-200'
-                              }`}>
-                                {emp.lotacao || emp.secaoLotacao || emp.sede_atual || emp.sede}
-                              </span>
-                              <span className={`text-[9px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Execução: {emp.uoExecucao || emp.lotacao || emp.sede_atual || emp.sede}
-                              </span>
-                              <span className={`text-[9px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Origem: {emp.sede_origem || emp.sede}
-                              </span>
-                              {emp.canteiroId && constructionSites ? (
-                                (() => {
-                                  const site = constructionSites.find(s => s.id === emp.canteiroId);
-                                  return site ? <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-200'}`} title={site.name || site.nome}>{site.code || site.codigo || site.name || site.nome}</span> : null;
-                                })()
-                              ) : null}
-                              {emp.sede_atual && emp.sede_atual !== emp.sede && (
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                                  isDark 
-                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' 
-                                    : 'bg-amber-50 text-amber-800 border-amber-200'
-                                }`} title={`Alocado temporariamente em ${emp.sede_atual}`}>
-                                  ➔ {emp.sede_atual}
-                                </span>
-                              )}
-                            </div>
+                            <span className={`px-2 py-0.5 font-bold rounded text-[10px] border ${
+                              isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              {emp.sedeCodigo || 'Não informado'}
+                            </span>
+                          </td>
+                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                            {emp.lotacaoUoCodigo || 'Não informado'}
+                          </td>
+                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                            {emp.uoExecucaoCodigo || 'Não informado'}
+                          </td>
+                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                            {(() => {
+                              if (!emp.canteiroExecucaoId) return 'Não informado';
+                              const site = constructionSites.find((item) => item.id === emp.canteiroExecucaoId);
+                              return site?.nome || site?.name || site?.codigo || site?.code || emp.canteiroExecucaoId;
+                            })()}
+                          </td>
+                          <td className={`py-3.5 px-4 max-w-48 truncate ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`} title={emp.departamentoOriginal || '—'}>
+                            {emp.departamentoOriginal || '—'}
                           </td>
                           <td className={`py-3.5 px-4 whitespace-nowrap ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
                             {emp.dataAdmissao}

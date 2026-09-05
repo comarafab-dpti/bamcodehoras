@@ -320,7 +320,7 @@ export const EmployeeSelfServicePortal: React.FC<EmployeeSelfServicePortalProps>
                 </div>
               )}
               <div className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-blue-600 rounded text-[9px] font-bold text-white uppercase">
-                {authenticatedEmployee.sede_atual || authenticatedEmployee.sede}
+                {authenticatedEmployee.sedeCodigo || 'Não informado'}
               </div>
             </div>
 
@@ -340,12 +340,9 @@ export const EmployeeSelfServicePortal: React.FC<EmployeeSelfServicePortalProps>
               <div className={`flex flex-wrap items-center gap-3 pt-1 text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
                 <span className="flex items-center gap-1">
                   <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                  Sede Origem: {authenticatedEmployee.sede}
-                  {authenticatedEmployee.sede_atual && authenticatedEmployee.sede_atual !== authenticatedEmployee.sede && (
-                    <span className="text-amber-400 font-bold ml-1">
-                      (Alocado em: {authenticatedEmployee.sede_atual})
-                    </span>
-                  )}
+                  Sede: {authenticatedEmployee.sedeCodigo || 'Não informado'}
+                  <span className="ml-1">• Lotação: {authenticatedEmployee.lotacaoUoCodigo || 'Não informado'}</span>
+                  <span className="ml-1">• UO Execução: {authenticatedEmployee.uoExecucaoCodigo || 'Não informado'}</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-amber-400" />

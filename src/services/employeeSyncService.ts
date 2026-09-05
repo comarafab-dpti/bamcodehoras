@@ -1,4 +1,8 @@
 /**
+ * @deprecated Fase C: o fluxo de atualização periódica de colaboradores foi
+ * consolidado em importacaoColaboradores.ts + classificacaoInterativa.ts.
+ * Este arquivo permanece apenas para compatibilidade histórica e não deve ser usado.
+ *
  * Employee Sync Service (UPSERT)
  * Handles deduplication and synchronized import from CSV and PDF paystubs
  * 

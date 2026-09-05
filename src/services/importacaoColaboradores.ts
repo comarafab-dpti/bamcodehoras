@@ -85,6 +85,61 @@ export interface ImportacaoResultado {
 }
 
 /**
+ * Monta um payload esparso para o upsert periódico. Campos ausentes não são
+ * enviados, permitindo que o merge preserve dados que não vieram no CSV.
+ */
+export function prepararPayloadImportacao(
+  colaborador: Partial<Employee>,
+  preservarOrganizacao = false
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  const matricula = (colaborador.matricula || colaborador.id || '').trim().toUpperCase();
+  if (matricula) {
+    payload.id = matricula;
+    payload.matricula = matricula;
+  }
+  const campos = [
+    'nome', 'funcao', 'cargo', 'email', 'telefone', 'celular', 'pis',
+    'codigoExterno', 'cpf', 'cpfHash', 'cpfMascarado', 'dataAdmissao',
+    'dataNascimento', 'dataDemissao', 'status', 'sede', 'sede_origem',
+    'sede_atual', 'lotacao', 'uoExecucao', 'secaoLotacao', 'canteiroId',
+    'sedeCodigo', 'lotacaoUoCodigo', 'uoExecucaoCodigo',
+    'canteiroExecucaoId', 'departamentoOriginal', 'departamento',
+  ] as const;
+
+  for (const campo of campos) {
+    const valor = colaborador[campo];
+    if (valor !== undefined && valor !== null && valor !== '') {
+      payload[campo] = valor;
+    }
+  }
+
+  if (preservarOrganizacao) {
+    for (const campo of [
+      'sede', 'sede_origem', 'sede_atual', 'lotacao', 'uoExecucao',
+      'secaoLotacao', 'canteiroId', 'sedeCodigo', 'lotacaoUoCodigo',
+      'uoExecucaoCodigo', 'canteiroExecucaoId', 'departamentoOriginal',
+      'departamento',
+    ]) {
+      delete payload[campo];
+    }
+  }
+
+  return payload;
+}
+
+/** Preserva o departamento original já registrado durante atualizações periódicas. */
+export function preservarDepartamentoOriginal(
+  payload: Record<string, unknown>,
+  existente?: Pick<Employee, 'departamentoOriginal'>
+): Record<string, unknown> {
+  if (existente?.departamentoOriginal) {
+    return { ...payload, departamentoOriginal: existente.departamentoOriginal };
+  }
+  return payload;
+}
+
+/**
  * Ordem padrão das 22 colunas conforme layout oficial fornecido.
  */
 export const ORDEM_COLUNAS_CSV_PADRAO: (keyof CsvColaborador)[] = [
@@ -310,7 +365,7 @@ export async function mapearColaboradorCsv(
   // Determina a sede de compatibilidade (Branch)
   let branchCompativel: Branch = 'BE';
   const canteiroPadrao = classificacao.unidade.sedeOuCanteiroPadrao;
-  if (canteiroPadrao && ['KO', 'BE', 'MN', 'SP', 'RJ'].includes(canteiroPadrao)) {
+  if (canteiroPadrao) {
     branchCompativel = canteiroPadrao as Branch;
   }
 
@@ -345,6 +400,11 @@ export async function mapearColaboradorCsv(
     status,
     lotacao: codigoUo,
     uoExecucao: codigoUo,
+    departamentoOriginal: departamentoOriginal || undefined,
+    lotacaoUoCodigo: codigoUo,
+    uoExecucaoCodigo: codigoUo,
+    sedeCodigo: canteiroPadrao || undefined,
+    canteiroExecucaoId: undefined,
     sede: branchCompativel,
     sede_origem: branchCompativel,
     sede_atual: branchCompativel,

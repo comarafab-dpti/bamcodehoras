@@ -1,12 +1,17 @@
 /**
- * PDF Payroll Import Helper with Employee Sync Service
- * 
- * Example integration of employeeSyncService with PDF payroll (contracheques) import flow
- * This extends the existing parsePaystubsFromPDF functionality
+ * PDF Payroll Import Helper legado, mantido apenas por compatibilidade de API.
+ * A importação de contracheques não atualiza mais colaboradores.
  */
 
 import { Employee, PaystubRecord, ConstructionSite } from '../types';
-import { employeeSyncService, EmployeeSyncResult } from '../services/employeeSyncService';
+type EmployeeSyncResult = {
+  success: boolean;
+  action: 'created' | 'updated' | 'skipped';
+  employeeId: string;
+  matricula: string;
+  nome: string;
+  message: string;
+};
 
 /**
  * Extended result of PDF import with sync details
@@ -34,12 +39,12 @@ export interface PDFSyncImportResult {
 }
 
 /**
- * Converts PaystubRecords to Employee objects and syncs using employeeSyncService
+ * Converte dados para compatibilidade, sem sincronizar colaboradores.
  * 
  * This function:
  * 1. Extracts employee data from PaystubRecords
  * 2. Maps the PDF "sede" field to department code for bigram matching
- * 3. Uses employeeSyncService to deduplicate and create/update employees
+ * 3. A atualização de colaboradores fica fora deste fluxo descontinuado
  * 4. Preserves original Firestore IDs on updates
  * 
  * @param paystubs Array of PaystubRecord objects extracted from PDF
@@ -136,32 +141,14 @@ export async function syncPaystubsToEmployees(
       };
     }
 
-    // Sync employees using employeeSyncService
-    const syncResults = await employeeSyncService.batchSyncEmployees(
-      employees,
-      departmentMap,
-      constructionSites,
-      (progress) => {
-        if (onProgress) {
-          onProgress({
-            processed: progress.processed,
-            total: progress.total,
-            percent: progress.percent
-          });
-        }
-      }
-    );
-
-    const stats = employeeSyncService.getSyncStatistics(syncResults);
-
     return {
-      success: stats.failed === 0 && unregisteredEmployees.length === 0,
+      success: false,
       totalPaystubs: paystubs.length,
       totalUnregisteredEmployees: unregisteredEmployees.length,
-      syncResults,
-      statistics: stats,
+      syncResults: [],
+      statistics: { total: 0, created: 0, updated: 0, skipped: 0, successful: 0, failed: employees.length },
       unregisteredEmployees,
-      warnings
+      warnings: [...warnings, 'Sincronizacao legada de colaboradores descontinuada na Fase C.']
     };
 
   } catch (err: any) {

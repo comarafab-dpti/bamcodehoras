@@ -92,12 +92,18 @@ async function runTests() {
   console.log('\n--- Teste 4: Normalização de UO e Compatibilidade de Sede ---');
   assert(mapped0.colaborador.lotacao === 'DECO_KO', 'Lotação normalizada para DECO_KO');
   assert(mapped0.colaborador.uoExecucao === 'DECO_KO', 'uoExecucao espelha a lotação por padrão');
+  assert(mapped0.colaborador.departamentoOriginal === 'deco-ko', 'Preserva departamentoOriginal bruto do CSV');
+  assert(mapped0.colaborador.lotacaoUoCodigo === 'DECO_KO', 'Preenche lotacaoUoCodigo canônico');
+  assert(mapped0.colaborador.uoExecucaoCodigo === 'DECO_KO', 'Preenche uoExecucaoCodigo canônico');
+  assert(mapped0.colaborador.sedeCodigo === 'KO', 'Preenche sedeCodigo a partir da UO');
   assert(mapped0.colaborador.sede === 'KO', 'Compatibilidade de sede definida para KO');
   assert(mapped0.pendenteClassificacao === false, 'DECO_KO não é pendente de classificação');
 
   // Linha 4: DL (Setor da Sede Belém)
   const mappedDl = await mapearColaboradorCsv(linhasParseadas[3], 4);
   assert(mappedDl.colaborador.lotacao === 'SETOR_DL', 'DL normaliza para SETOR_DL');
+  assert(mappedDl.colaborador.lotacaoUoCodigo === 'SETOR_DL', 'DL preenche UO canônica');
+  assert(mappedDl.colaborador.sedeCodigo === 'BE', 'DL deriva sedeCodigo BE');
   assert(mappedDl.colaborador.sede === 'BE', 'SETOR_DL tem sede BE por compatibilidade');
 
   // Linha 5: PMAC (Setor da Sede Belém)

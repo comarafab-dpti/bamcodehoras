@@ -1,4 +1,8 @@
-# Guia de Integração: Employee Sync Service
+# Guia histórico: Employee Sync Service
+
+> Descontinuado na Fase C. O fluxo oficial de atualização CSV é
+> `importacaoColaboradores.ts` + `classificacaoInterativa.ts`. Este documento
+> permanece apenas como referência histórica.
 
 Este guia mostra como integrar o `employeeSyncService` com os fluxos de importação CSV e PDF (Contracheques).
 

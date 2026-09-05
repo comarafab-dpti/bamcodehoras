@@ -86,7 +86,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
   theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
-  const { settings: institutionSettings, sedes: instSedes } = useInstitution();
+  const { settings: institutionSettings } = useInstitution();
   const currentEmployee = employees.find(e => e.matricula === selectedMatricula) || employees[0];
   
   // Módulo ativo da visão do colaborador
@@ -102,9 +102,9 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
 
   // Assinaturas dinâmicas do Canteiro do Colaborador
   const dynamicSignatures = useMemo(() => {
-    const branchCode = currentEmployee?.sede_atual || currentEmployee?.sede || (instSedes && instSedes[0]?.codigo) || 'KO';
+    const branchCode = currentEmployee?.sedeCodigo || '';
     return getSignaturesForCanteiro(branchCode, constructionSites);
-  }, [currentEmployee, constructionSites, instSedes]);
+  }, [currentEmployee, constructionSites]);
 
   // Registros de Insalubridade do Colaborador
   const employeeInsalubrities = useMemo(() => {
@@ -297,7 +297,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
             >
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.matricula}>
-                  {emp.matricula} — {emp.nome} ({emp.sede})
+                  {emp.matricula} — {emp.nome} ({emp.sedeCodigo || 'Não informado'})
                 </option>
               ))}
             </select>
@@ -385,7 +385,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
               EXTRATO INDIVIDUAL DE BANCO DE HORAS & COMPENSAÇÕES (SPTF)
             </h2>
             <p className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'} print:text-slate-600`}>
-              Sede/Canteiro: <span className="font-bold text-blue-400 print:text-black">{currentEmployee.sede}</span> • Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              Sede: <span className="font-bold text-blue-400 print:text-black">{currentEmployee.sedeCodigo || 'Não informado'}</span> • Gerado em: {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>
@@ -443,15 +443,14 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Building className="w-3.5 h-3.5 text-blue-500" />
-                  Sede Origem: <strong className={isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}>{currentEmployee.sede}</strong>
+                  Sede: <strong className={isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}>{currentEmployee.sedeCodigo || 'Não informado'}</strong>
                 </span>
-                {currentEmployee.sede_atual && currentEmployee.sede_atual !== currentEmployee.sede && (
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                    isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}>
-                    ➔ Alocado em {currentEmployee.sede_atual}
-                  </span>
-                )}
+                <span>•</span>
+                <span>Lotação: {currentEmployee.lotacaoUoCodigo || 'Não informado'}</span>
+                <span>•</span>
+                <span>UO Execução: {currentEmployee.uoExecucaoCodigo || 'Não informado'}</span>
+                <span>•</span>
+                <span>Departamento Original: {currentEmployee.departamentoOriginal || '—'}</span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-blue-500" />
@@ -1207,7 +1206,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
                 <span className="text-[10px] font-mono uppercase text-[#94A3B8] block">Sede de Alocação</span>
                 <div className="text-xl font-bold font-mono text-purple-400 mt-1">
-                  {currentEmployee.sede_atual || currentEmployee.sede}
+                  {currentEmployee.canteiroExecucaoId || 'Não informado'}
                 </div>
                 <span className="text-[11px] font-mono text-[#94A3B8]">Destacamento COMARA</span>
               </div>
@@ -1269,7 +1268,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
                             {ins.quantidadeHorasDias} {ins.unidade ? ins.unidade.toLowerCase() : 'horas'}
                           </td>
                           <td className="py-3 px-4 text-center whitespace-nowrap font-bold">
-                            {ins.sede || currentEmployee.sede}
+                            {ins.sede || currentEmployee.sedeCodigo || 'Não informado'}
                           </td>
                           <td className="py-3 px-4 text-[11px] text-slate-400 whitespace-nowrap">
                             {ins.responsavelLancamento || 'Encarregado / SST'}

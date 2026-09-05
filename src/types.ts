@@ -1,4 +1,12 @@
-export type Branch = 'KO' | 'BE' | 'MN' | 'SP' | 'RJ';
+/**
+ * Código territorial institucional.
+ * A validação dos códigos cadastrados será feita por serviço próprio na Fase B;
+ * a tipagem mantém o código aberto para aceitar novas localidades, incluindo FB.
+ */
+export type CodigoTerritorial = string;
+
+/** Alias legado mantido durante a transição para o modelo canônico. */
+export type Branch = CodigoTerritorial;
 
 export type TipoUnidadeOrganizacional = 'SEDE' | 'DACO' | 'DECO' | 'SETOR' | 'NAO_CLASSIFICADO';
 
@@ -207,6 +215,11 @@ export interface Employee {
   sede: Branch; // Sede padrão/fixa
   sede_origem?: Branch; // Sede contratual / fixa
   sede_atual?: Branch; // Canteiro / sede temporária
+  sedeCodigo?: CodigoTerritorial; // Código territorial canônico
+  lotacaoUoCodigo?: string; // UO administrativa canônica
+  uoExecucaoCodigo?: string; // UO de execução canônica
+  canteiroExecucaoId?: string; // Canteiro físico de execução canônico
+  departamentoOriginal?: string; // Valor original recebido do sistema de origem
   lotacao?: string; // UO de lotação administrativa (ex: SEDE_BE, SETOR_DL, DECO_KO)
   uoExecucao?: string; // UO ou canteiro de execução operacional efetiva (ex: DECO_KO)
   secaoLotacao?: string;
@@ -245,6 +258,20 @@ export interface Employee {
   id_drive_foto?: string;
   criadoEm?: string;
   atualizadoEm?: string;
+}
+
+/** Alocação temporal de um colaborador, persistida como entidade própria. */
+export interface AlocacaoColaborador {
+  id: string;
+  colaboradorId: string; // matrícula
+  sedeCodigo: CodigoTerritorial;
+  uoCodigo: string;
+  canteiroId?: string;
+  dataInicio: string; // ISO
+  dataFim?: string; // ISO
+  ativa: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
 }
 
 export interface Attachment {

@@ -22,6 +22,7 @@ import { auditService, RegisterAuditParams, registrarLogAuditoria } from './audi
 import { localCache, CACHE_KEYS, CACHE_TTLS } from './localCache';
 import { storageService } from './storageService';
 import { maskCPF } from '../utils/lgpdUtils';
+import { prepararCamposCanonicosParaFirestore } from './normalizacaoColaboradorService';
 export { registrarLogAuditoria, autoSeedDefaultAdminMaster };
 
 export const COLLECTIONS = {
@@ -77,6 +78,7 @@ export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<stri
     sede: emp.sede || 'KO',
     sede_origem: emp.sede_origem || emp.sede || 'KO',
     sede_atual: emp.sede_atual || emp.sede || 'KO',
+    ...prepararCamposCanonicosParaFirestore(emp),
     lotacao: emp.lotacao || emp.secaoLotacao || emp.sede_atual || emp.sede || '',
     secaoLotacao: emp.secaoLotacao || emp.lotacao || '',
     uoExecucao: emp.uoExecucao || emp.lotacao || '',

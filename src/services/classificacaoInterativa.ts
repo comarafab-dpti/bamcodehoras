@@ -5,7 +5,11 @@
  */
 
 import { Employee, UnidadeOrganizacional, TipoUnidadeOrganizacional, Branch } from '../types';
-import { ImportacaoColaborador } from './importacaoColaboradores';
+import {
+  ImportacaoColaborador,
+  prepararPayloadImportacao,
+  preservarDepartamentoOriginal,
+} from './importacaoColaboradores';
 import {
   UNIDADES_ORGANIZACIONAIS,
   registrarNovaUOEmMemoria,
@@ -97,7 +101,9 @@ function atualizarColaboradorComUo(
   const colaboradorAtualizado: Partial<Employee> = {
     ...item.colaborador,
     lotacao: uo.codigo,
+    lotacaoUoCodigo: uo.codigo,
     uoExecucao: uo.codigo,
+    uoExecucaoCodigo: uo.codigo,
     secaoLotacao: uo.siglaExibicao,
     departamento: uo.nome,
     sede: branchCompativel,
@@ -352,7 +358,7 @@ export async function persistirColaboradoresFirestore(
   // Lazy import do Firestore SDK e helpers para garantir isolamento em testes unitários puros
   const { doc, writeBatch } = await import('firebase/firestore');
   const { db } = await import('./firebase');
-  const { COLLECTIONS, prepareEmployeeForFirestore } = await import('./firestoreService');
+  const { COLLECTIONS } = await import('./firestoreService');
 
   let salvosTotal = 0;
   const erros: string[] = [];
@@ -362,8 +368,18 @@ export async function persistirColaboradoresFirestore(
     const batch = writeBatch(db);
 
     for (const item of chunk) {
-      const empData = prepareEmployeeForFirestore(item.colaborador);
-      const docRef = doc(db, COLLECTIONS.COLABORADORES, empData.matricula);
+      const matricula = (item.colaborador.matricula || item.colaborador.id || '').trim().toUpperCase();
+      const existente = existentes.find((emp) =>
+        (emp.matricula || emp.id || '').trim().toUpperCase() === matricula
+      );
+      const empData = {
+        ...preservarDepartamentoOriginal(
+          prepararPayloadImportacao(item.colaborador, item.pendenteClassificacao),
+          existente
+        ),
+        atualizadoEm: new Date().toISOString(),
+      };
+      const docRef = doc(db, COLLECTIONS.COLABORADORES, matricula);
       batch.set(docRef, empData, { merge: true });
     }
 
