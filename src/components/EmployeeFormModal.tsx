@@ -92,6 +92,9 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const [funcao, setFuncao] = useState('Operador de Campo');
   const [sede, setSede] = useState<Branch>('KO');
   const [sedeAtual, setSedeAtual] = useState<Branch>('KO');
+  const [lotacao, setLotacao] = useState('');
+  const [uoExecucao, setUoExecucao] = useState('');
+  const [departamento, setDepartamento] = useState('');
   const [isAlocadoTemporario, setIsAlocadoTemporario] = useState(false);
   const [dataInicioAlocacao, setDataInicioAlocacao] = useState('');
   const [dataFimAlocacao, setDataFimAlocacao] = useState('');
@@ -128,6 +131,9 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         setFuncao(employee.funcao || employee.cargo || 'Operador de Campo');
         setSede(employee.sede_origem || employee.sede || 'KO');
         setSedeAtual(employee.sede_atual || employee.sede || 'KO');
+        setLotacao(employee.lotacao || employee.secaoLotacao || employee.sede_atual || employee.sede || '');
+        setUoExecucao(employee.uoExecucao || employee.lotacao || '');
+        setDepartamento(employee.departamento || '');
         setIsAlocadoTemporario(Boolean(employee.sede_atual && employee.sede_atual !== (employee.sede_origem || employee.sede)));
         setDataInicioAlocacao(employee.dataInicioAlocacao || '');
         setDataFimAlocacao(employee.dataFimAlocacao || '');
@@ -148,6 +154,9 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         setFuncao('Operador de Campo');
         setSede('KO');
         setSedeAtual('KO');
+        setLotacao('');
+        setUoExecucao('');
+        setDepartamento('');
         setIsAlocadoTemporario(false);
         setDataInicioAlocacao('');
         setDataFimAlocacao('');
@@ -230,6 +239,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       sede,
       sede_origem: sede,
       sede_atual: isAlocadoTemporario ? sedeAtual : sede,
+      lotacao: lotacao.trim() || sedeAtual || sede,
+      secaoLotacao: lotacao.trim() || sedeAtual || sede,
+      uoExecucao: uoExecucao.trim() || lotacao.trim() || sedeAtual || sede,
+      departamento: departamento.trim() || lotacao.trim() || '',
       dataInicioAlocacao: isAlocadoTemporario ? dataInicioAlocacao : undefined,
       dataFimAlocacao: isAlocadoTemporario ? dataFimAlocacao : undefined,
       dataAdmissao: dataAdmissao || '2024-01-15',
@@ -526,6 +539,27 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     )}
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  ['Lotação', lotacao, setLotacao, 'UO administrativa ou setor'],
+                  ['Local de Execução / UO', uoExecucao, setUoExecucao, 'UO ou canteiro operacional'],
+                  ['Departamento', departamento, setDepartamento, 'Departamento de origem'],
+                ].map(([label, value, setter, placeholder]) => (
+                  <div key={label as string}>
+                    <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>
+                      {label as string}
+                    </label>
+                    <input
+                      type="text"
+                      value={value as string}
+                      onChange={(e) => (setter as (value: string) => void)(e.target.value)}
+                      placeholder={placeholder as string}
+                      className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20' : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'}`}
+                    />
+                  </div>
+                ))}
               </div>
 
               {/* Nome Completo */}

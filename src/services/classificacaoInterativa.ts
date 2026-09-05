@@ -6,7 +6,11 @@
 
 import { Employee, UnidadeOrganizacional, TipoUnidadeOrganizacional, Branch } from '../types';
 import { ImportacaoColaborador } from './importacaoColaboradores';
-import { UNIDADES_ORGANIZACIONAIS, registrarNovaUOEmMemoria } from '../constants/unidadesOrganizacionais';
+import {
+  UNIDADES_ORGANIZACIONAIS,
+  registrarNovaUOEmMemoria,
+  UNIDADES_ORGANIZACIONAIS_COLLECTION,
+} from '../constants/unidadesOrganizacionais';
 
 /**
  * Parâmetros para criação de uma nova UO (setor, DECO ou DACO) em tempo de importação.
@@ -218,6 +222,23 @@ export function aplicarNovoSetor(
     colaboradoresAtualizados,
     novaUo,
   };
+}
+
+/** Cria a UO no catálogo em memória e aguarda sua persistência no Firestore. */
+export async function aplicarNovoSetorPersistido(
+  colaboradores: ImportacaoColaborador[],
+  departamentoOriginal: string,
+  parametros: ParametrosNovoSetor
+): Promise<{ colaboradoresAtualizados: ImportacaoColaborador[]; novaUo: UnidadeOrganizacional }> {
+  const resultado = aplicarNovoSetor(colaboradores, departamentoOriginal, parametros);
+  const { doc, setDoc } = await import('firebase/firestore');
+  const { db } = await import('./firebase');
+  await setDoc(
+    doc(db, UNIDADES_ORGANIZACIONAIS_COLLECTION, resultado.novaUo.codigo),
+    resultado.novaUo,
+    { merge: true }
+  );
+  return resultado;
 }
 
 /**

@@ -77,6 +77,10 @@ export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<stri
     sede: emp.sede || 'KO',
     sede_origem: emp.sede_origem || emp.sede || 'KO',
     sede_atual: emp.sede_atual || emp.sede || 'KO',
+    lotacao: emp.lotacao || emp.secaoLotacao || emp.sede_atual || emp.sede || '',
+    secaoLotacao: emp.secaoLotacao || emp.lotacao || '',
+    uoExecucao: emp.uoExecucao || emp.lotacao || '',
+    departamento: emp.departamento || emp.lotacao || '',
     canteiroId: emp.canteiroId || '',
     cpf: emp.cpf || '',
     cpfHash: emp.cpfHash || '',
@@ -101,10 +105,6 @@ export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<stri
     data_inicio_status: emp.data_inicio_status || emp.dataInicioStatus || '',
     data_fim_status: emp.data_fim_status || emp.dataFimStatus || '',
     observacao_status: emp.observacao_status || emp.motivoStatus || '',
-    lotacao: emp.lotacao || '',
-    uoExecucao: emp.uoExecucao || '',
-    secaoLotacao: emp.secaoLotacao || '',
-    departamento: emp.departamento || '',
     celular: emp.celular || '',
     dataNascimento: emp.dataNascimento || '',
     dataDemissao: emp.dataDemissao || '',
@@ -1494,11 +1494,13 @@ export const firestoreService = {
   },
 
   async saveConstructionSite(site: Partial<ConstructionSite> & { chiefContact?: string; chefeContato?: string }): Promise<void> {
-    return canteiroService.saveCanteiro(site);
+    await canteiroService.saveCanteiro(site);
+    localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
   },
 
   async deleteConstructionSite(id: string): Promise<void> {
-    return canteiroService.deleteCanteiro(id);
+    await canteiroService.deleteCanteiro(id);
+    localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
   },
 
   // -------------------------------------------------------------

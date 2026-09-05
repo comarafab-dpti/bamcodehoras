@@ -37,13 +37,17 @@ import {
 import { 
   aplicarClassificacaoExistente, 
   aplicarNovoSetor, 
+  aplicarNovoSetorPersistido,
   manterNaoClassificado, 
   analisarConflitosMatricula, 
   persistirColaboradoresFirestore, 
   ProgressoImportacaoInfo,
   ParametrosNovoSetor
 } from '../services/classificacaoInterativa';
-import { UNIDADES_ORGANIZACIONAIS } from '../constants/unidadesOrganizacionais';
+import {
+  UNIDADES_ORGANIZACIONAIS,
+  carregarUnidadesOrganizacionais,
+} from '../constants/unidadesOrganizacionais';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 
@@ -106,6 +110,14 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
   const [resumoGravacao, setResumoGravacao] = useState<{ salvos: number; erros: string[] } | null>(null);
 
   // Reseta estados quando o modal fecha
+  useEffect(() => {
+    if (isOpen) {
+      carregarUnidadesOrganizacionais().catch((error) => {
+        console.warn('[ImportarColaboradoresModal] Falha ao carregar UOs persistidas:', error);
+      });
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) {
       setNomeArquivo('');
@@ -269,7 +281,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
   }, [deptoEmClassificacao, opcaoClassificacao, uoSelecionadaCodigo, novoSetorForm]);
 
   // Aplica a decisão de classificação interativa
-  const confirmarClassificacao = () => {
+  const confirmarClassificacao = async () => {
     if (!deptoEmClassificacao) return;
     const deptoOriginal = deptoEmClassificacao.departamento;
 
@@ -280,7 +292,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
       novaLista = aplicarClassificacaoExistente(todosColaboradores, deptoOriginal, uoEncontrada);
     } else if (opcaoClassificacao === 'NOVO') {
       try {
-        const resultado = aplicarNovoSetor(todosColaboradores, deptoOriginal, novoSetorForm);
+        const resultado = await aplicarNovoSetorPersistido(todosColaboradores, deptoOriginal, novoSetorForm);
         novaLista = resultado.colaboradoresAtualizados;
         setVersaoUos(v => v + 1);
       } catch (err: any) {

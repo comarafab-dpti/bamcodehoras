@@ -108,8 +108,16 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   // 1. Estados de Filtro & Busca
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSede, setFilterSede] = useState<string>('TODAS');
+  const [filterSetor, setFilterSetor] = useState<string>('TODOS');
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>('TODOS');
+
+  const availableSetores = useMemo(() => Array.from(new Set(
+    employees
+      .map((emp) => emp.lotacao || emp.secaoLotacao || emp.departamento || '')
+      .map((value) => value.trim())
+      .filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, 'pt-BR')), [employees]);
   
   // 2. Estado de Ordenação Dinâmica
   const [sortOption, setSortOption] = useState<MobileSortOption>('nome_asc');
@@ -176,6 +184,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           return false;
         }
 
+        const setor = emp.lotacao || emp.secaoLotacao || emp.departamento || '';
+        if (filterSetor !== 'TODOS' && setor !== filterSetor) return false;
+
         // 2. Filtro de Status Contratual
         if (filterStatus !== 'TODOS' && emp.status !== filterStatus) {
           return false;
@@ -198,7 +209,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           const matchMat = emp.matricula.toLowerCase().includes(q);
           const matchNome = emp.nome.toLowerCase().includes(q);
           const matchFunc = (emp.funcao || emp.cargo || '').toLowerCase().includes(q);
-          if (!matchMat && !matchNome && !matchFunc) {
+          const matchUo = [emp.lotacao, emp.secaoLotacao, emp.uoExecucao, emp.departamento]
+            .some((value) => (value || '').toLowerCase().includes(q));
+          if (!matchMat && !matchNome && !matchFunc && !matchUo) {
             return false;
           }
         }
@@ -238,7 +251,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         }
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
-  }, [employees, records, filterSede, filterStatus, balanceFilter, searchTerm, sortConfig]);
+  }, [employees, records, filterSede, filterSetor, filterStatus, balanceFilter, searchTerm, sortConfig]);
 
   // -------------------------------------------------------------
   // HANDLERS DE ORDENAÇÃO (MOBILE & DESKTOP)
@@ -841,6 +854,19 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 </select>
 
                 <select
+                  value={filterSetor}
+                  onChange={(e) => setFilterSetor(e.target.value)}
+                  className={`px-2.5 py-1.5 rounded-lg font-medium border focus:outline-hidden cursor-pointer ${
+                    isDark
+                      ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0] focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20'
+                      : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                  }`}
+                >
+                  <option value="TODOS">Todos os Setores / UOs</option>
+                  {availableSetores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+                </select>
+
+                <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className={`px-2.5 py-1.5 rounded-lg font-medium border focus:outline-hidden cursor-pointer ${
@@ -974,12 +1000,13 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <span className={`text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
                   Exibindo <strong>{filteredAndSortedEmployees.length}</strong> de {employees.length}
                 </span>
-                {(searchTerm || filterSede !== 'TODAS' || filterStatus !== 'TODOS' || balanceFilter !== 'TODOS') && (
+                {(searchTerm || filterSede !== 'TODAS' || filterSetor !== 'TODOS' || filterStatus !== 'TODOS' || balanceFilter !== 'TODOS') && (
                   <button
                     type="button"
                     onClick={() => {
                       setSearchTerm('');
                       setFilterSede('TODAS');
+                      setFilterSetor('TODOS');
                       setFilterStatus('TODOS');
                       setBalanceFilter('TODOS');
                     }}
@@ -1111,12 +1138,13 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                           <AlertCircle className="w-6 h-6 text-gray-500" />
                           <p className="font-semibold text-sm">Nenhum colaborador localizado com os filtros selecionados.</p>
                           <p className="text-[11px]">Tente alterar a busca ou redefinir os filtros de saldo e sede.</p>
-                          {(searchTerm || filterSede !== 'TODAS' || filterStatus !== 'TODOS' || balanceFilter !== 'TODOS') && (
+                          {(searchTerm || filterSede !== 'TODAS' || filterSetor !== 'TODOS' || filterStatus !== 'TODOS' || balanceFilter !== 'TODOS') && (
                             <button
                               type="button"
                               onClick={() => {
                                 setSearchTerm('');
                                 setFilterSede('TODAS');
+                                setFilterSetor('TODOS');
                                 setFilterStatus('TODOS');
                                 setBalanceFilter('TODOS');
                               }}
@@ -1179,7 +1207,10 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                                   ? 'bg-[#243756] text-blue-400 border-[#335075]' 
                                   : 'bg-blue-50 text-blue-700 border-blue-200'
                               }`}>
-                                {emp.sede_atual || emp.sede}
+                                {emp.lotacao || emp.secaoLotacao || emp.sede_atual || emp.sede}
+                              </span>
+                              <span className={`text-[9px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                Execução: {emp.uoExecucao || emp.lotacao || emp.sede_atual || emp.sede}
                               </span>
                               <span className={`text-[9px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
                                 Origem: {emp.sede_origem || emp.sede}

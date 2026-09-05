@@ -227,44 +227,13 @@ export function getSignaturesForCanteiro(
 }
 
 /**
- * Helper para mesclar canteiros do Firestore com as Sedes/Canteiros base
+ * Normaliza a lista persistida sem reintroduzir registros legados.
+ * A coleção canteiros_obras é a fonte oficial; uma coleção vazia permanece vazia.
  */
-function mergeWithBaseSedes(firestoreSites: ConstructionSite[]): ConstructionSite[] {
-  const map = new Map<string, ConstructionSite>();
-
-  // 1. Carrega sedes base
-  BASE_SEDES_CANTEIROS.forEach((base) => {
-    const key = (base.code || base.codigo || '').toUpperCase();
-    map.set(key, base);
-  });
-
-  // 2. Sobrescreve/adiciona com dados do Firestore
-  firestoreSites.forEach((site) => {
-    const code = (site.code || site.codigo || site.branch || site.sede || '').toUpperCase();
-    const existing = map.get(code);
-    if (existing) {
-      map.set(code, {
-        ...existing,
-        ...site,
-        code: code,
-        codigo: code,
-        branch: (code as any),
-        sede: (code as any),
-      });
-    } else {
-      map.set(code || site.id, {
-        ...site,
-        code: code || 'CT-01',
-        codigo: code || 'CT-01',
-        branch: (code || site.branch || 'KO') as any,
-        sede: (code || site.sede || 'KO') as any,
-      });
-    }
-  });
-
-  const merged = Array.from(map.values());
-  merged.sort((a, b) => (a.name || a.nome || '').localeCompare(b.name || b.nome || ''));
-  return merged;
+function normalizePersistedSites(firestoreSites: ConstructionSite[]): ConstructionSite[] {
+  return [...firestoreSites].sort((a, b) =>
+    (a.name || a.nome || '').localeCompare(b.name || b.nome || '')
+  );
 }
 
 export const canteiroService = {
@@ -319,10 +288,10 @@ export const canteiroService = {
         } as any);
       });
 
-      return mergeWithBaseSedes(list);
+      return normalizePersistedSites(list);
     } catch (error) {
       logFirestoreError(error, OperationType.GET, CANTEIROS_COLLECTION);
-      return mergeWithBaseSedes([]);
+      return normalizePersistedSites([]);
     }
   },
 
@@ -391,18 +360,18 @@ export const canteiroService = {
             } as any);
           });
 
-          onSuccess(mergeWithBaseSedes(list));
+          onSuccess(normalizePersistedSites(list));
         },
         (error) => {
           logFirestoreError(error, OperationType.LIST, CANTEIROS_COLLECTION);
           if (onError) onError(error);
-          onSuccess(mergeWithBaseSedes([]));
+          onSuccess(normalizePersistedSites([]));
         }
       );
     } catch (err: any) {
       logFirestoreError(err, OperationType.LIST, CANTEIROS_COLLECTION);
       if (onError) onError(err);
-      onSuccess(mergeWithBaseSedes([]));
+      onSuccess(normalizePersistedSites([]));
       return () => {};
     }
   },

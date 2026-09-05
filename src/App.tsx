@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Employee, TimeRecord, Attachment, AdminUser, AdminRole, AuthSession, InsalubrityRecord, SystemConfig, GrauInsalubridade, ConstructionSite, PaystubRecord, DispensaSptfRecord } from './types';
 import { storageService } from './services/storageService';
 import { firestoreService, BatchProgressInfo } from './services/firestoreService';
+import { localCache, CACHE_KEYS } from './services/localCache';
 import { seedService } from './services/seedService';
 import { auth, googleProvider, testFirestoreConnection, isPermissionError, isQuotaError } from './services/firebase';
 import { authService, isMasterAdminEmail, getFirebaseAuthErrorMessage } from './services/authService';
@@ -1477,6 +1478,23 @@ export default function App() {
     const rawAuxDa = site.auxDa || '';
     try {
       await firestoreService.saveConstructionSite(site);
+      localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
+      const id = site.id || `canteiro-${String(rawCode).toLowerCase()}`;
+      const updatedSite = {
+        id,
+        name: rawName,
+        code: rawCode,
+        branch: site.branch || site.sede || rawCode,
+        status: site.status || 'ACTIVE',
+        ...site,
+      } as ConstructionSite;
+      setConstructionSites((prev) => {
+        const index = prev.findIndex((current) => current.id === id);
+        if (index < 0) return [...prev, updatedSite];
+        const next = [...prev];
+        next[index] = { ...next[index], ...updatedSite };
+        return next;
+      });
       showToast('Canteiro de obras salvo com sucesso no Firestore!');
 
       // Audit Trail: Passagem de Bastão / Troca de Cargo / Atualização de Canteiro
@@ -1527,6 +1545,8 @@ export default function App() {
     const targetSite = constructionSites.find(s => s.id === id);
     try {
       await firestoreService.deleteConstructionSite(id);
+      localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
+      setConstructionSites((prev) => prev.filter((site) => site.id !== id));
       showToast('Canteiro de obras removido com sucesso.');
 
       // Audit Trail

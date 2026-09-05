@@ -141,6 +141,27 @@ export const UNIDADES_ORGANIZACIONAIS: Record<string, UnidadeOrganizacional> = {
   },
 };
 
+export const UNIDADES_ORGANIZACIONAIS_COLLECTION = 'unidades_organizacionais';
+let unidadesOrganizacionaisLoad: Promise<void> | null = null;
+
+/** Carrega UOs persistidas uma vez e as mescla ao catálogo estático. */
+export async function carregarUnidadesOrganizacionais(): Promise<void> {
+  if (!unidadesOrganizacionaisLoad) {
+    unidadesOrganizacionaisLoad = (async () => {
+      const { collection, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../services/firebase');
+      const snapshot = await getDocs(collection(db, UNIDADES_ORGANIZACIONAIS_COLLECTION));
+      snapshot.forEach((item) => {
+        const data = item.data() as Partial<UnidadeOrganizacional>;
+        if (data.codigo && data.nome && data.siglaExibicao && data.tipo && typeof data.ativa === 'boolean') {
+          UNIDADES_ORGANIZACIONAIS[data.codigo] = data as UnidadeOrganizacional;
+        }
+      });
+    })();
+  }
+  await unidadesOrganizacionaisLoad;
+}
+
 /**
  * Tabela de aliases para normalização de departamentos oriundos de CSVs legados.
  * As chaves são representadas normalizadas (maiúsculas, sem acentos, com e sem separadores).
