@@ -1056,6 +1056,18 @@ export default function App() {
     }
   };
 
+  const handleEmployeeSaved = (savedEmployee: Employee) => {
+    setEmployees((currentEmployees) => {
+      const exists = currentEmployees.some((employee) => employee.id === savedEmployee.id);
+      const updatedEmployees = exists
+        ? currentEmployees.map((employee) => employee.id === savedEmployee.id ? savedEmployee : employee)
+        : [savedEmployee, ...currentEmployees];
+      storageService.saveEmployees(updatedEmployees);
+      return updatedEmployees;
+    });
+    setSelectedMatricula(savedEmployee.matricula);
+  };
+
   // -------------------------------------------------------------
   // Safety Intercept Handlers para Destructive Actions
   // -------------------------------------------------------------
@@ -2042,6 +2054,7 @@ export default function App() {
               constructionSites={constructionSites}
               dispensas={dispensasSptf}
               onUpdateEmployees={handleUpdateEmployees}
+              onEmployeeSaved={handleEmployeeSaved}
               onViewStatement={(mat) => handleViewStatement(mat)}
               onQuickNewEntry={(mat) => handleOpenNewEntry(mat)}
               onOpenSptfDispensa={(mat) => handleOpenSptfDispensa(mat)}

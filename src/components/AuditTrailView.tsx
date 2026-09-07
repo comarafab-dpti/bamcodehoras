@@ -101,6 +101,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
     { value: 'EMISSAO_DISPENSA', label: 'Emissão de Dispensa SPTF' },
     { value: 'CANCELAMENTO_DISPENSA', label: 'Cancelamento de Dispensa' },
     { value: 'ALTERACAO_FUNCAO', label: 'Alteração de Função / Chefia' },
+    { value: 'ALTERACAO_SENHA', label: 'Alteração de Senha' },
     { value: 'PASSAGEM_BASTAO', label: 'Passagem de Bastão' },
     { value: 'IMPORTACAO_FOLHA', label: 'Importação de Folha' },
     { value: 'ALTERACAO_PERMISSAO_ADMIN', label: 'Alteração de Permissões RBAC' },

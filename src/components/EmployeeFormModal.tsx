@@ -24,6 +24,7 @@ import {
 } from '../constants/unidadesOrganizacionais';
 import { firestoreService } from '../services/firestoreService';
 import { authService } from '../services/authService';
+import { getEmployeeSaveAudit } from '../utils/employeeSaveRouting';
 
 interface InfoTooltipProps {
   content: string;
@@ -287,11 +288,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       }
 
       // 3. Log de Auditoria no Firestore
+      const audit = getEmployeeSaveAudit(hasInitialPassword, isEditing, cleanMatricula, nome.trim());
       await firestoreService.logSystemEvent({
-        tipo: 'ALTERACAO_PERMISSAO_RBAC',
-        descricao: isEditing 
-          ? `Edição de perfil/cadastro do colaborador #${cleanMatricula} (${nome.trim()})`
-          : `Cadastro de novo colaborador #${cleanMatricula} (${nome.trim()})`,
+        tipo: audit.tipo,
+        descricao: audit.descricao,
         usuario: 'GESTOR_RH',
         matricula: cleanMatricula,
         detalhes: {

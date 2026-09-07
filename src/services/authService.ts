@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, addDoc, collection, getDocs, query, orderBy, limit, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { 
   signInWithPopup,
   signInWithRedirect,
@@ -99,6 +99,74 @@ export async function hashPassword(password: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function verifyPasswordHash(password: string, passwordHash: string): Promise<boolean> {
+  return (await hashPassword(password)) === passwordHash;
+}
+
+function normalizeEmployeeIdentifier(value: string): { raw: string; digits: string } {
+  const raw = value.trim().toUpperCase();
+  return { raw, digits: raw.replace(/\D/g, '') };
+}
+
+function mapEmployeeSnapshot(snapshot: { id: string; data: () => Record<string, any> }): Employee {
+  const data = snapshot.data() as Employee;
+  return {
+    ...data,
+    id: data.id || snapshot.id,
+    matricula: data.matricula || snapshot.id,
+  };
+}
+
+export async function findEmployeeForPublicLogin(
+  identifier: string,
+  employees: Employee[] = []
+): Promise<Employee | null> {
+  const { raw, digits } = normalizeEmployeeIdentifier(identifier);
+  if (!raw) return null;
+
+  const matchesIdentifier = (employee: Employee) => {
+    const matricula = (employee.matricula || '').trim().toUpperCase();
+    const matriculaSemZeros = matricula.replace(/^0+/, '');
+    const cpf = (employee.cpf || '').replace(/\D/g, '');
+    return matricula === raw || matriculaSemZeros === raw.replace(/^0+/, '') ||
+      (digits.length >= 9 && (cpf === digits || cpf.endsWith(digits)));
+  };
+
+  const cachedMatch = employees.find(matchesIdentifier);
+  if (cachedMatch) return cachedMatch;
+
+  const documentIds = Array.from(new Set([raw, raw.replace(/^0+/, '')].filter(Boolean)));
+  try {
+    for (const documentId of documentIds) {
+      const snapshot = await getDoc(doc(db, COLLECTIONS.COLABORADORES, documentId));
+      if (snapshot.exists()) {
+        const employee = mapEmployeeSnapshot({ id: snapshot.id, data: () => snapshot.data() });
+        if (matchesIdentifier(employee) || employee.matricula === documentId) return employee;
+      }
+    }
+
+    const matriculaSnapshot = await getDocs(
+      query(collection(db, COLLECTIONS.COLABORADORES), where('matricula', '==', raw), limit(1))
+    );
+    if (!matriculaSnapshot.empty) {
+      return mapEmployeeSnapshot(matriculaSnapshot.docs[0]);
+    }
+
+    if (digits.length >= 9) {
+      for (const cpfValue of [raw, digits]) {
+        const cpfSnapshot = await getDocs(
+          query(collection(db, COLLECTIONS.COLABORADORES), where('cpf', '==', cpfValue), limit(1))
+        );
+        if (!cpfSnapshot.empty) return mapEmployeeSnapshot(cpfSnapshot.docs[0]);
+      }
+    }
+  } catch (error) {
+    console.warn('Busca de colaborador para autoatendimento indisponível:', error);
+  }
+
+  return null;
 }
 
 // Local cache keys
@@ -386,8 +454,7 @@ export const authService = {
       };
     }
 
-    const hashedAttempt = await hashPassword(passwordAttempt);
-    if (hashedAttempt === authData.passwordHash) {
+    if (await verifyPasswordHash(passwordAttempt, authData.passwordHash)) {
       const nowIso = new Date().toISOString();
       const updated: EmployeeAuth = {
         ...authData,

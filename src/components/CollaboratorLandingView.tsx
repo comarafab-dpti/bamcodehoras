@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Employee, TimeRecord, Attachment, InsalubrityRecord, PaystubRecord } from '../types';
-import { authService } from '../services/authService';
-import { cleanCPF } from '../utils/lgpdUtils';
+import { authService, findEmployeeForPublicLogin } from '../services/authService';
 import { ComaraLogo } from './ComaraLogo';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { InfoTooltip } from './InfoTooltip';
@@ -116,27 +115,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
 
     setIsLoading(true);
 
-    const cleanInput = rawInput.toUpperCase();
-    const cleanDigits = cleanCPF(rawInput);
-
-    // Locate employee in the central database by Matrícula or CPF
-    const matchedEmployee = employees.find((emp) => {
-      const empMat = emp.matricula.trim().toUpperCase();
-      const empMatNoZero = empMat.replace(/^0+/, '');
-      const cleanEmpDigits = cleanCPF(emp.cpf);
-
-      // Match por Matrícula
-      if (empMat === cleanInput || empMatNoZero === cleanInput.replace(/^0+/, '')) {
-        return true;
-      }
-
-      // Match por CPF
-      if (cleanDigits && cleanDigits.length >= 9 && cleanEmpDigits && (cleanEmpDigits === cleanDigits || cleanEmpDigits.endsWith(cleanDigits))) {
-        return true;
-      }
-
-      return false;
-    });
+    const matchedEmployee = await findEmployeeForPublicLogin(rawInput, employees);
 
     if (!matchedEmployee) {
       setIsLoading(false);

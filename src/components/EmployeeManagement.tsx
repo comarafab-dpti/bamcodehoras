@@ -57,6 +57,7 @@ import {
   listarUnidadesOrganizacionais,
 } from '../constants/unidadesOrganizacionais';
 import { resolveEmployeeOrgInfo } from '../utils/employeeOrgHelper';
+import { mergeSavedEmployee } from '../utils/employeeSaveRouting';
 
 interface EmployeeManagementProps {
   employees: Employee[];
@@ -64,6 +65,7 @@ interface EmployeeManagementProps {
   constructionSites?: ConstructionSite[];
   dispensas?: DispensaSptfRecord[];
   onUpdateEmployees: (employees: Employee[]) => void;
+  onEmployeeSaved?: (employee: Employee) => void;
   onViewStatement: (matricula: string) => void;
   onQuickNewEntry: (matricula: string) => void;
   onOpenSptfDispensa?: (matricula?: string) => void;
@@ -85,6 +87,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   constructionSites = [],
   dispensas = [],
   onUpdateEmployees,
+  onEmployeeSaved,
   onViewStatement,
   onQuickNewEntry,
   onOpenSptfDispensa,
@@ -1269,12 +1272,12 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           setEditingEmployee(null);
         }}
         onSaveSuccess={(savedEmp, updatedList) => {
-          if (updatedList) {
+          if (onEmployeeSaved) {
+            onEmployeeSaved(savedEmp);
+          } else if (updatedList) {
             onUpdateEmployees(updatedList);
           } else {
-            const newList = editingEmployee
-              ? employees.map((emp) => (emp.id === savedEmp.id ? savedEmp : emp))
-              : [savedEmp, ...employees];
+            const newList = mergeSavedEmployee(employees, savedEmp);
             onUpdateEmployees(newList);
           }
           setIsModalOpen(false);
