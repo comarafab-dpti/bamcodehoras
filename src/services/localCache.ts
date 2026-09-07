@@ -32,6 +32,16 @@ export const CACHE_KEYS = {
   DISPENSAS_SPTF: 'dispensas_sptf',
 };
 
+function getStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export const localCache = {
   /**
    * Obtém dado do cache (primeiro em memória, depois localStorage).
@@ -51,9 +61,12 @@ export const localCache = {
     }
 
     // 2. Tenta recuperar do localStorage persistente
+    const storage = getStorage();
+    if (!storage) return null;
+
     try {
       const storageKey = `${CACHE_PREFIX}${key}`;
-      const raw = localStorage.getItem(storageKey);
+      const raw = storage.getItem(storageKey);
       if (raw) {
         const parsed: CacheEntry<T> = JSON.parse(raw);
         if (now - parsed.timestamp < parsed.ttlMs) {
@@ -62,7 +75,7 @@ export const localCache = {
           return parsed.data;
         } else {
           // Expirado no storage
-          localStorage.removeItem(storageKey);
+          storage.removeItem(storageKey);
         }
       }
     } catch (e) {
@@ -87,9 +100,12 @@ export const localCache = {
     MEMORY_CACHE.set(key, entry);
 
     // Salva no localStorage com tratamento seguro de quota do browser
+    const storage = getStorage();
+    if (!storage) return;
+
     try {
       const storageKey = `${CACHE_PREFIX}${key}`;
-      localStorage.setItem(storageKey, JSON.stringify(entry));
+      storage.setItem(storageKey, JSON.stringify(entry));
     } catch (e) {
       console.warn(`[localCache] Erro ao persistir cache para '${key}' no localStorage:`, e);
     }
@@ -105,9 +121,12 @@ export const localCache = {
       return true;
     }
 
+    const storage = getStorage();
+    if (!storage) return false;
+
     try {
       const storageKey = `${CACHE_PREFIX}${key}`;
-      const raw = localStorage.getItem(storageKey);
+      const raw = storage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         return (now - parsed.timestamp < parsed.ttlMs);
@@ -122,26 +141,31 @@ export const localCache = {
    * Remove item específico ou limpa todo o cache gerenciado.
    */
   clearCache(key?: string): void {
+    const storage = getStorage();
     if (key) {
       MEMORY_CACHE.delete(key);
-      try {
-        localStorage.removeItem(`${CACHE_PREFIX}${key}`);
-      } catch (e) {
-        console.warn(`[localCache] Erro ao limpar '${key}':`, e);
+      if (storage) {
+        try {
+          storage.removeItem(`${CACHE_PREFIX}${key}`);
+        } catch (e) {
+          console.warn(`[localCache] Erro ao limpar '${key}':`, e);
+        }
       }
     } else {
       MEMORY_CACHE.clear();
-      try {
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith(CACHE_PREFIX)) {
-            keysToRemove.push(k);
+      if (storage) {
+        try {
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < storage.length; i++) {
+            const k = storage.key(i);
+            if (k && k.startsWith(CACHE_PREFIX)) {
+              keysToRemove.push(k);
+            }
           }
+          keysToRemove.forEach((k) => storage.removeItem(k));
+        } catch (e) {
+          console.warn('[localCache] Erro ao limpar todo o cache:', e);
         }
-        keysToRemove.forEach((k) => localStorage.removeItem(k));
-      } catch (e) {
-        console.warn('[localCache] Erro ao limpar todo o cache:', e);
       }
     }
   },

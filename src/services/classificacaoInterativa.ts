@@ -109,6 +109,7 @@ function atualizarColaboradorComUo(
     sede: branchCompativel,
     sede_origem: branchCompativel,
     sede_atual: branchCompativel,
+    sedeCodigo: uo.sedeOuCanteiroPadrao || item.colaborador.sedeCodigo || branchCompativel,
   };
 
   return {

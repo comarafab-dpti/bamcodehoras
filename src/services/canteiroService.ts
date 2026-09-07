@@ -14,6 +14,7 @@ import {
 import { db, logFirestoreError, OperationType } from './firebase';
 import { ConstructionSite, CanteiroSignatures, TratamentoTitulo } from '../types';
 import { firestoreService, sanitizeFirestoreData } from './firestoreService';
+import { localCache, CACHE_KEYS } from './localCache';
 
 export const CANTEIROS_COLLECTION = 'canteiros_obras';
 
@@ -230,7 +231,7 @@ export function getSignaturesForCanteiro(
  * Normaliza a lista persistida sem reintroduzir registros legados.
  * A coleção canteiros_obras é a fonte oficial; uma coleção vazia permanece vazia.
  */
-function normalizePersistedSites(firestoreSites: ConstructionSite[]): ConstructionSite[] {
+export function normalizePersistedSites(firestoreSites: ConstructionSite[]): ConstructionSite[] {
   return [...firestoreSites].sort((a, b) =>
     (a.name || a.nome || '').localeCompare(b.name || b.nome || '')
   );
@@ -249,8 +250,8 @@ export const canteiroService = {
         const data = docSnap.data();
         const rawName = data.name || data.nome || 'Canteiro de Obras';
         const rawCode = data.code || data.codigo || 'CT-01';
-        const rawBranch = data.branch || data.sede || rawCode;
-        const rawChief = data.chief || data.chefeCanteiro || '';
+        const rawBranch = (data.sedeCodigo || data.branch || data.sede || rawCode).toUpperCase();
+        const rawChief = data.chief || data.chefeCanteiro || data.chefe || '';
         const rawChiefContact = data.chiefContact || data.chefeContato || data.contato || '';
         const rawManager = data.manager || data.gerente || '';
         const rawAddress = data.address || data.endereco || '';
@@ -265,8 +266,12 @@ export const canteiroService = {
           codigo: rawCode,
           branch: rawBranch,
           sede: rawBranch,
+          sedeCodigo: rawBranch,
           chief: rawChief,
+          chefe: rawChief,
           chefeCanteiro: rawChief,
+          encarregado: data.encarregado || '',
+          uoVinculadaCodigo: data.uoVinculadaCodigo || '',
           chiefContact: rawChiefContact,
           chefeContato: rawChiefContact,
           manager: rawManager,
@@ -311,8 +316,8 @@ export const canteiroService = {
             const data = docSnap.data();
             const rawName = data.name || data.nome || 'Canteiro de Obras';
             const rawCode = data.code || data.codigo || 'CT-01';
-            const rawBranch = data.branch || data.sede || rawCode;
-            const rawChief = data.chief || data.chefeCanteiro || '';
+            const rawBranch = (data.sedeCodigo || data.branch || data.sede || rawCode).toUpperCase();
+            const rawChief = data.chief || data.chefeCanteiro || data.chefe || '';
             const rawTratamentoChefe = data.tratamentoChefeCanteiro || 'Encarregado';
             const rawChiefContact = data.chiefContact || data.chefeContato || data.contato || '';
             const rawChefeDa = data.chefeDa || '';
@@ -331,8 +336,12 @@ export const canteiroService = {
               codigo: rawCode,
               branch: rawBranch,
               sede: rawBranch,
+              sedeCodigo: rawBranch,
               chief: rawChief,
+              chefe: rawChief,
               chefeCanteiro: rawChief,
+              encarregado: data.encarregado || '',
+              uoVinculadaCodigo: data.uoVinculadaCodigo || '',
               tratamentoChefeCanteiro: rawTratamentoChefe,
               chiefContact: rawChiefContact,
               chefeContato: rawChiefContact,
@@ -386,8 +395,10 @@ export const canteiroService = {
     const nowIso = new Date().toISOString();
 
     const rawName = site.name || site.nome || `Canteiro ${rawCode}`;
-    const rawBranch = (site.branch || site.sede || rawCode).toUpperCase();
-    const rawChief = site.chief || site.chefeCanteiro || '';
+    const rawBranch = (site.sedeCodigo || site.branch || site.sede || rawCode).toUpperCase();
+    const rawChief = site.chefe || site.chief || site.chefeCanteiro || '';
+    const rawEncarregado = site.encarregado || (site as any).encarregado || '';
+    const rawUoVinculada = site.uoVinculadaCodigo || (site as any).uoVinculadaCodigo || '';
     const rawTratamentoChefe = site.tratamentoChefeCanteiro || 'Encarregado';
     const rawChiefContact = site.chiefContact || site.chefeContato || '';
     const rawChefeDa = site.chefeDa || '';
@@ -411,8 +422,12 @@ export const canteiroService = {
       endereco: rawAddress,
       branch: rawBranch,
       sede: rawBranch,
+      sedeCodigo: rawBranch,
       chief: rawChief,
+      chefe: rawChief,
       chefeCanteiro: rawChief,
+      encarregado: rawEncarregado,
+      uoVinculadaCodigo: rawUoVinculada,
       tratamentoChefeCanteiro: rawTratamentoChefe,
       chiefContact: rawChiefContact,
       chefeContato: rawChiefContact,
@@ -440,6 +455,7 @@ export const canteiroService = {
     try {
       await firestoreService.ensureAuthenticatedWriteSession();
       await setDoc(doc(db, CANTEIROS_COLLECTION, docId), dataToSave, { merge: true });
+      localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
     } catch (error) {
       logFirestoreError(error, OperationType.WRITE, path);
       throw error;
@@ -454,6 +470,7 @@ export const canteiroService = {
     try {
       await firestoreService.ensureAuthenticatedWriteSession();
       await deleteDoc(doc(db, CANTEIROS_COLLECTION, id));
+      localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
     } catch (error) {
       logFirestoreError(error, OperationType.DELETE, path);
       throw error;

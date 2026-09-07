@@ -375,6 +375,10 @@ export interface ConstructionSite {
   id: string;
   codigo: string; // Ex: KO-01, BE-01, MN-01
   nome: string; // Ex: Canteiro Aeroporto Coari
+  sedeCodigo?: string; // Código canônico territorial (ex: KO, BE, MN, FB)
+  uoVinculadaCodigo?: string; // Código de UO vinculada para referência (ex: DECO_KO)
+  chefe?: string; // Chefe do canteiro
+  encarregado?: string; // Encarregado da frente de serviço
   endereco?: string;
   sede?: Branch;
   bigramasImportacao?: string[]; // Bigramas/siglas para matching em importações (ex: ["KO", "DECO-KO"], ["MN", "DACO-MN"])
@@ -388,7 +392,7 @@ export interface ConstructionSite {
   auxDa?: string; // Auxiliar da DA
   responsaveis?: CanteiroResponsavel[];
   historicoTransicao?: CanteiroTransicao[];
-  status: 'Ativo' | 'Em Desmobilização' | 'Encerrado' | 'ACTIVE' | 'INACTIVE' | 'PLANNED';
+  status: 'Ativo' | 'Em Desmobilização' | 'Encerrado' | 'Inativo' | 'Planejado' | 'ACTIVE' | 'INACTIVE' | 'PLANNED' | string;
   grauInsalubridade?: GrauInsalubridade;
   insalubrityLevel?: GrauInsalubridade;
   dataInicio?: string;

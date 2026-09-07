@@ -97,7 +97,7 @@ export const SiteSupervisorMobileView: React.FC<SiteSupervisorMobileViewProps> =
     // Sede / Obra filter
     if (selectedSede !== 'TODAS') {
       result = result.filter(
-        (e) => e.sede === selectedSede || e.sede_atual === selectedSede
+        (e) => (e.sedeCodigo || e.sede_atual || e.sede) === selectedSede
       );
     }
 

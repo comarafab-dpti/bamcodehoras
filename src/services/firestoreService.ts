@@ -22,7 +22,7 @@ import { auditService, RegisterAuditParams, registrarLogAuditoria } from './audi
 import { localCache, CACHE_KEYS, CACHE_TTLS } from './localCache';
 import { storageService } from './storageService';
 import { maskCPF } from '../utils/lgpdUtils';
-import { prepararCamposCanonicosParaFirestore } from './normalizacaoColaboradorService';
+import { prepararCamposCanonicosParaFirestore, normalizarCamposCanonicos } from './normalizacaoColaboradorService';
 export { registrarLogAuditoria, autoSeedDefaultAdminMaster };
 
 export const COLLECTIONS = {
@@ -62,9 +62,9 @@ export function sanitizeFirestoreData<T extends Record<string, any>>(data: T): R
   return clean;
 }
 
-/** Converte um documento Firestore sem inferir campos canônicos a partir dos legados. */
+/** Converte um documento Firestore e garante campos canônicos normalizados em leitura. */
 export function mapEmployeeDocument(data: Record<string, any>, id: string): Employee {
-  return {
+  return normalizarCamposCanonicos({
     ...data,
     id,
     matricula: data.matricula || id,
@@ -81,7 +81,7 @@ export function mapEmployeeDocument(data: Record<string, any>, id: string): Empl
     departamentoOriginal: data.departamentoOriginal,
     dataAdmissao: data.dataAdmissao || '2026-01-01',
     status: data.status || 'Ativo',
-  };
+  });
 }
 
 // Higienizador robusto para Colaboradores. Campos legados só são mantidos quando informados.
@@ -623,33 +623,7 @@ export const firestoreService = {
       const snapshot = await getDocs(q);
       const list: Employee[] = [];
       snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        list.push({
-          id: docSnap.id,
-          matricula: data.matricula || docSnap.id,
-          nome: data.nome || '',
-          funcao: data.funcao || data.cargo || 'Técnico de Manutenção',
-          cargo: data.cargo || data.funcao,
-          sede: data.sede || 'KO',
-          sede_origem: data.sede_origem || data.sede || 'KO',
-          sede_atual: data.sede_atual || data.sede || 'KO',
-          dataAdmissao: data.dataAdmissao || '2026-01-01',
-          status: data.status || 'Ativo',
-          saldoInicialHoras: typeof data.saldoInicialHoras === 'number' ? data.saldoInicialHoras : 0,
-          primeiroAcesso: typeof data.primeiroAcesso === 'boolean' ? data.primeiroAcesso : undefined,
-          senhaCadastrada: typeof data.senhaCadastrada === 'boolean' ? data.senhaCadastrada : undefined,
-          telefone: data.telefone,
-          email: data.email,
-          horarioTrabalho: data.horarioTrabalho,
-          url_foto_perfil: data.url_foto_perfil || data.avatarUrl,
-          avatarUrl: data.avatarUrl || data.url_foto_perfil,
-          id_drive_foto: data.id_drive_foto,
-          data_inicio_status: data.data_inicio_status,
-          data_fim_status: data.data_fim_status,
-          observacao_status: data.observacao_status,
-          criadoEm: data.criadoEm,
-          atualizadoEm: data.atualizadoEm,
-        });
+        list.push(mapEmployeeDocument(docSnap.data(), docSnap.id));
       });
       return list;
     } catch (error) {
@@ -1458,12 +1432,21 @@ export const firestoreService = {
       const list: ConstructionSite[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data() as any;
+        const rawBranch = (data.sedeCodigo || data.sede || data.branch || '').toUpperCase();
         list.push({
           id: docSnap.id,
           codigo: data.codigo || data.code || '',
+          code: data.code || data.codigo || '',
           nome: data.nome || data.name || '',
-          sede: data.sede || data.branch,
-          chefeCanteiro: data.chefeCanteiro || data.chief,
+          name: data.name || data.nome || '',
+          sede: rawBranch,
+          branch: rawBranch,
+          sedeCodigo: rawBranch,
+          chefe: data.chefe || data.chefeCanteiro || data.chief || '',
+          chief: data.chief || data.chefeCanteiro || data.chefe || '',
+          chefeCanteiro: data.chefeCanteiro || data.chefe || data.chief || '',
+          encarregado: data.encarregado || '',
+          uoVinculadaCodigo: data.uoVinculadaCodigo || '',
           chefeDa: data.chefeDa,
           gerente: data.gerente || data.manager,
           auxDa: data.auxDa,

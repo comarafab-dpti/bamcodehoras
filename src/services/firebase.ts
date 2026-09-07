@@ -66,34 +66,35 @@ function sanitizeDatabaseId(input?: string): string | undefined {
   return undefined;
 }
 
-const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+const metaEnv = (import.meta as any)?.env || {};
+const envApiKey = metaEnv.VITE_FIREBASE_API_KEY;
 const appletApiKey = firebaseAppletConfig?.apiKey;
 const resolvedApiKey = isValidGoogleApiKey(envApiKey) ? envApiKey.trim() : (appletApiKey || envApiKey || '');
 
 const cleanProjectId = 
-  sanitizeProjectId(import.meta.env.VITE_FIREBASE_PROJECT_ID) || 
+  sanitizeProjectId(metaEnv.VITE_FIREBASE_PROJECT_ID) || 
   sanitizeProjectId(firebaseAppletConfig?.projectId) || 
   '';
 
 const cleanAuthDomain = 
-  sanitizeAuthDomain(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, cleanProjectId) || 
+  sanitizeAuthDomain(metaEnv.VITE_FIREBASE_AUTH_DOMAIN, cleanProjectId) || 
   sanitizeAuthDomain(firebaseAppletConfig?.authDomain, cleanProjectId);
 
 const cleanDatabaseId = 
-  sanitizeDatabaseId(import.meta.env.VITE_FIREBASE_DATABASE_ID) || 
+  sanitizeDatabaseId(metaEnv.VITE_FIREBASE_DATABASE_ID) || 
   sanitizeDatabaseId(firebaseAppletConfig?.firestoreDatabaseId);
 
 const cleanMessagingSenderId = String(
-  import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig?.messagingSenderId || ''
+  metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseAppletConfig?.messagingSenderId || ''
 ).replace(/[^0-9]/g, '');
 
 const firebaseConfig = {
   apiKey: resolvedApiKey,
   authDomain: cleanAuthDomain,
   projectId: cleanProjectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig?.storageBucket || (cleanProjectId ? `${cleanProjectId}.firebasestorage.app` : ''),
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || firebaseAppletConfig?.storageBucket || (cleanProjectId ? `${cleanProjectId}.firebasestorage.app` : ''),
   messagingSenderId: cleanMessagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig?.appId || '',
+  appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseAppletConfig?.appId || '',
 };
 
 // Initialize Firebase with environment configuration

@@ -139,10 +139,10 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         setMatricula(employee.matricula);
         setNome(employee.nome);
         setFuncao(employee.funcao || employee.cargo || 'Operador de Campo');
-        setSedeCodigo(employee.sedeCodigo || '');
-        setLotacaoUoCodigo(employee.lotacaoUoCodigo || '');
-        setUoExecucaoCodigo(employee.uoExecucaoCodigo || '');
-        setCanteiroExecucaoId(employee.canteiroExecucaoId || '');
+        setSedeCodigo(employee.sedeCodigo || employee.sede_atual || employee.sede || employee.sede_origem || '');
+        setLotacaoUoCodigo(employee.lotacaoUoCodigo || employee.lotacao || '');
+        setUoExecucaoCodigo(employee.uoExecucaoCodigo || employee.uoExecucao || employee.lotacao || '');
+        setCanteiroExecucaoId(employee.canteiroExecucaoId || employee.canteiroId || '');
         setDepartamentoOriginal(employee.departamentoOriginal || '');
         setIsAlocadoTemporario(Boolean(employee.canteiroExecucaoId && employee.dataInicioAlocacao));
         setDataInicioAlocacao(employee.dataInicioAlocacao || '');

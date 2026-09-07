@@ -158,8 +158,8 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
   const availableSedes = useMemo(() => {
     const s = new Set<string>();
     employees.forEach((e) => {
-      if (e.sede) s.add(e.sede);
-      if (e.sede_atual) s.add(e.sede_atual);
+      const sCod = e.sedeCodigo || e.sede_atual || e.sede;
+      if (sCod) s.add(sCod);
     });
     return Array.from(s).sort();
   }, [employees]);
@@ -223,7 +223,7 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
   // Filtered employees (respeita busca, sede, função e dia selecionado no cabeçalho)
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
-      if (filterSede !== 'TODAS' && emp.sedeCodigo !== filterSede) return false;
+      if (filterSede !== 'TODAS' && (emp.sedeCodigo || emp.sede_atual || emp.sede) !== filterSede) return false;
       if (filterFuncao !== 'TODAS' && emp.funcao !== filterFuncao) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();

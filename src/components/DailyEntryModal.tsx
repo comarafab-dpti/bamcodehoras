@@ -179,7 +179,7 @@ export const DailyEntryModal: React.FC<DailyEntryModalProps> = ({
 
   if (!isOpen) return null;
 
-  const sedeEfetiva: Branch = selectedEmployee?.sede_atual || selectedEmployee?.sede || initialRecord?.employeeSede || 'KO';
+  const sedeEfetiva: Branch = (selectedEmployee?.sedeCodigo || selectedEmployee?.sede_atual || selectedEmployee?.sede || initialRecord?.employeeSede || 'KO') as Branch;
 
   const calc = calculateSPTFBalance(
     tipoOcorrencia,
@@ -472,7 +472,7 @@ export const DailyEntryModal: React.FC<DailyEntryModalProps> = ({
             >
               {employees.map((emp) => (
                 <option key={emp.id || emp.matricula} value={emp.matricula}>
-                  {emp.matricula} — {emp.nome} ({emp.funcao} • Sede: {emp.sede_atual || emp.sede})
+                  {emp.matricula} — {emp.nome} ({emp.funcao} • Sede: {emp.sedeCodigo || emp.sede_atual || emp.sede})
                 </option>
               ))}
             </select>

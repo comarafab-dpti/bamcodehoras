@@ -280,7 +280,7 @@ export const InsalubrityManagement: React.FC<InsalubrityManagementProps> = ({
         id: editingRecord ? editingRecord.id : `ins-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         matricula: selectedEmployeeInForm.matricula,
         nomeColaborador: selectedEmployeeInForm.nome,
-        sede: selectedEmployeeInForm.sede_atual || selectedEmployeeInForm.sede || 'KO',
+        sede: selectedEmployeeInForm.sedeCodigo || selectedEmployeeInForm.sede_atual || selectedEmployeeInForm.sede || 'KO',
         funcao: selectedEmployeeInForm.funcao || selectedEmployeeInForm.cargo || 'Operacional',
         dataEvento: formDataEvento,
         atividadeDesempenhada: formAtividade.trim(),
@@ -1021,7 +1021,7 @@ export const InsalubrityManagement: React.FC<InsalubrityManagementProps> = ({
                   <div className={`mt-2 p-2.5 rounded-xl border text-[11px] flex items-center justify-between ${
                     isDark ? 'bg-[#0F1B33] border-[#243756] text-gray-300' : 'bg-slate-50 border-slate-200 text-slate-700'
                   }`}>
-                    <span>Sede: <strong>{selectedEmployeeInForm.sede_atual || selectedEmployeeInForm.sede}</strong></span>
+                    <span>Sede: <strong>{selectedEmployeeInForm.sedeCodigo || selectedEmployeeInForm.sede_atual || selectedEmployeeInForm.sede}</strong></span>
                     <span>Função: <strong>{selectedEmployeeInForm.funcao || selectedEmployeeInForm.cargo}</strong></span>
                     <span>Fixo em Ficha: <strong>{selectedEmployeeInForm.grauInsalubridadeFixa || 'ISENTO'}</strong></span>
                   </div>

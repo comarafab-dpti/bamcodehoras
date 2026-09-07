@@ -739,7 +739,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                         <span>•</span>
                         <span>Função: <strong>{authenticatedEmployee.funcao || authenticatedEmployee.cargo}</strong></span>
                         <span>•</span>
-                        <span>Sede: <strong>{authenticatedEmployee.sede_atual || authenticatedEmployee.sede}</strong></span>
+                        <span>Sede: <strong>{authenticatedEmployee.sedeCodigo || authenticatedEmployee.sede_atual || authenticatedEmployee.sede}</strong></span>
                         <span>•</span>
                         <span className="inline-flex items-center gap-1 font-bold text-amber-300">
                           <Biohazard className="w-3.5 h-3.5" />

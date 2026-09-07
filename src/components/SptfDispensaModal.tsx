@@ -672,7 +672,7 @@ const SptfDispensaModalContent: React.FC<SptfDispensaModalProps> = ({
     if (targetMat) {
       const emp = employees.find(e => e.matricula === targetMat);
       if (emp) {
-        const sede = emp.sede_atual || emp.sede || 'KO';
+        const sede = emp.sedeCodigo || emp.sede_atual || emp.sede || 'KO';
         setSecaoCanteiro(`DECO-${sede}`);
       }
     }
@@ -699,7 +699,7 @@ const SptfDispensaModalContent: React.FC<SptfDispensaModalProps> = ({
     setSelectedMatricula(mat);
     const emp = employees.find(e => e.matricula === mat);
     if (emp) {
-      const sede = emp.sede_atual || emp.sede || 'KO';
+      const sede = emp.sedeCodigo || emp.sede_atual || emp.sede || 'KO';
       setSecaoCanteiro(`DECO-${sede}`);
     }
   };

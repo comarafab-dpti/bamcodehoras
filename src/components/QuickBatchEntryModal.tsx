@@ -393,7 +393,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
 
     for (const row of activeRows) {
       const emp = safeEmployees.find((e) => (e.matricula || e.id) === row.matricula);
-      const effectiveSede: Branch = (emp?.sede_atual || emp?.sede || row.sede || 'KO') as Branch;
+      const effectiveSede: Branch = (emp?.sedeCodigo || emp?.sede_atual || emp?.sede || row.sede || 'KO') as Branch;
       const isAcabouBanhou = row.tipo === 'ACABOU_BANHOU';
       const calc = calculateSPTFBalance(
         row.tipo,

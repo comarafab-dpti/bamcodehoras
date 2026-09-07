@@ -73,7 +73,7 @@ export const LaunchModal: React.FC<LaunchModalProps> = ({
 
   if (!isOpen) return null;
 
-  const sedeEfetiva: Branch = selectedEmployee?.sede_atual || selectedEmployee?.sede || 'KO';
+  const sedeEfetiva: Branch = (selectedEmployee?.sedeCodigo || selectedEmployee?.sede_atual || selectedEmployee?.sede || 'KO') as Branch;
 
   // Executa o cálculo com base no motor SPTF parametrizado
   const calc = calculateSPTFBalance(

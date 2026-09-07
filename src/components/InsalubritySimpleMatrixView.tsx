@@ -331,7 +331,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
 
       // 2. Sede / Canteiro
       if (selectedBranch !== 'TODAS') {
-        const empSede = emp.sede_atual || emp.sede;
+        const empSede = emp.sedeCodigo || emp.sede_atual || emp.sede;
         if (empSede !== selectedBranch) return false;
       }
 
@@ -437,7 +437,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
         id: `ins-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         matricula: emp.matricula,
         nomeColaborador: emp.nome,
-        sede: emp.sede_atual || emp.sede || 'KO',
+        sede: emp.sedeCodigo || emp.sede_atual || emp.sede || 'KO',
         funcao: emp.funcao || emp.cargo || 'Operacional',
         dataEvento: dayMeta.formattedDate,
         atividadeDesempenhada: effectiveActivity || 'CONCRETO',
@@ -470,7 +470,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
           id: `ins-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
           matricula: emp.matricula,
           nomeColaborador: emp.nome,
-          sede: emp.sede_atual || emp.sede || 'KO',
+          sede: emp.sedeCodigo || emp.sede_atual || emp.sede || 'KO',
           funcao: emp.funcao || emp.cargo || 'Operacional',
           dataEvento: d.formattedDate,
           atividadeDesempenhada: effectiveActivity || 'CONCRETO',
@@ -549,7 +549,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
         id: existing?.id || `ins-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         matricula: emp.matricula,
         nomeColaborador: emp.nome,
-        sede: emp.sede_atual || emp.sede || 'KO',
+        sede: emp.sedeCodigo || emp.sede_atual || emp.sede || 'KO',
         funcao: emp.funcao || emp.cargo || 'Operacional',
         dataEvento: batchLaunchDate,
         atividadeDesempenhada: effectiveActivity,
@@ -604,7 +604,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
         return '';
       }).join(';');
 
-      return `${index + 1};${emp.matricula};"${emp.nome.replace(/"/g, '""')}";"${(emp.funcao || emp.cargo || 'Operacional').replace(/"/g, '""')}";${dayValues};${markedCount};${emp.sede_atual || emp.sede || 'KO'}`;
+      return `${index + 1};${emp.matricula};"${emp.nome.replace(/"/g, '""')}";"${(emp.funcao || emp.cargo || 'Operacional').replace(/"/g, '""')}";${dayValues};${markedCount};${emp.sedeCodigo || emp.sede_atual || emp.sede || 'KO'}`;
     });
 
     const csvContent = '\uFEFF' + [headerRow1, headerRow2, headerRow3, '', tableHeader, ...rows].join('\n');
@@ -1330,7 +1330,7 @@ export const InsalubritySimpleMatrixView: React.FC<InsalubritySimpleMatrixViewPr
                         <div className="text-[11px] sm:text-xs text-gray-400 flex items-center gap-1.5 mt-0.5">
                           <span>MAT: {emp.matricula}</span>
                           <span>•</span>
-                          <span>{emp.sede_atual || emp.sede}</span>
+                          <span>{emp.sedeCodigo || emp.sede_atual || emp.sede}</span>
                         </div>
                       </td>
 

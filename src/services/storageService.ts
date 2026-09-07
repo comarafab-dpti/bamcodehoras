@@ -1,5 +1,6 @@
 import { Employee, TimeRecord, AdminUser, InsalubrityRecord, SystemConfig, PaystubRecord, DispensaSptfRecord, ConstructionSite } from '../types';
 import { INITIAL_EMPLOYEES, INITIAL_TIME_RECORDS, INITIAL_ADMINS } from '../constants/defaultData';
+import { normalizarCamposCanonicos } from './normalizacaoColaboradorService';
 
 const EMPLOYEES_KEY = 'banco_horas_employees_v1';
 const RECORDS_KEY = 'banco_horas_records_v1';
@@ -17,7 +18,8 @@ export const storageService = {
     try {
       const stored = localStorage.getItem(EMPLOYEES_KEY);
       if (stored !== null) {
-        return JSON.parse(stored);
+        const list: Employee[] = JSON.parse(stored);
+        return list.map(normalizarCamposCanonicos);
       }
     } catch (e) {
       console.error('Erro ao ler colaboradores do localStorage', e);
