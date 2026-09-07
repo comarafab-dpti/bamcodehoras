@@ -1118,21 +1118,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                             </div>
                           </td>
 
-                          {/* Setor (De qual setor se existir) */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          {/* Setor (somente sigla para preservar espaço das ações) */}
+                          <td className="py-3.5 px-4 whitespace-nowrap w-20">
                             {org.temSetor ? (
-                              <div className="flex items-center gap-1.5">
-                                {org.setorSigla && (
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border shrink-0 ${
-                                    isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
-                                  }`}>
-                                    {org.setorSigla}
-                                  </span>
-                                )}
-                                <span className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                                  {org.setorNome || org.setorSigla}
-                                </span>
-                              </div>
+                              <span className={`inline-block max-w-16 truncate px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
+                              }`} title={org.setorSigla || 'Setor'}>
+                                {org.setorSigla || '—'}
+                              </span>
                             ) : (
                               <span className={`text-xs font-mono ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
                                 —
