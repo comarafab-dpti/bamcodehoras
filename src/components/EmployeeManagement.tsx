@@ -530,15 +530,63 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className={`px-3 pb-3 pt-1 border-t ${isDark ? 'border-[#243756]' : 'border-slate-200'}`}>
-                        <div className="grid grid-cols-1 gap-1.5 text-xs mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>E-mail:</span>
-                            <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>{emp.email || 'Não informado'}</span>
+                      <div className={`px-3 pb-3 pt-2 border-t ${isDark ? 'border-[#243756]' : 'border-slate-200'}`}>
+                        <div className="space-y-2.5 mb-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                Função
+                              </div>
+                              <div className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {emp.funcao || 'Não informado'}
+                              </div>
+                            </div>
+                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                Status
+                              </div>
+                              <div className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {emp.status || '—'}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>Telefone:</span>
-                            <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>{emp.telefone || emp.celular || 'Não informado'}</span>
+
+                          <div className="grid grid-cols-1 gap-2">
+                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                E-mail
+                              </div>
+                              <div className={`text-xs break-all ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {emp.email || 'Não informado'}
+                              </div>
+                            </div>
+                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                Telefone
+                              </div>
+                              <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {emp.telefone || emp.celular || 'Não informado'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                Lotação
+                              </div>
+                              <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {org.lotacaoNome || '—'}
+                              </div>
+                            </div>
+                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                Local
+                              </div>
+                              <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {org.localTrabalhoNome || '—'}
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center justify-end gap-1.5">
