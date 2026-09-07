@@ -77,7 +77,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
 
   // Authenticated Employee State
   const [authenticatedEmployee, setAuthenticatedEmployee] = useState<Employee | null>(null);
-  const [collaboratorTab, setCollaboratorTab] = useState<'EXTRATO' | 'CONTRACHEQUE'>('EXTRATO');
+  const [collaboratorTab, setCollaboratorTab] = useState<'BANCO' | 'INSALUBRIDADE' | 'CONTRACHEQUE'>('BANCO');
   const [selectedPaystubId, setSelectedPaystubId] = useState<string>('');
 
   // Modal: First Access / Reset Password State (100% Firestore)
@@ -567,19 +567,32 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                 </div>
               </div>
 
-              {/* Seletor de Sub-Abas do Colaborador: Extrato vs Contracheque */}
-              <div className="flex items-center gap-2 border-b border-slate-700/60 pb-3 print:hidden">
+              {/* Abas do autoatendimento: Banco de Horas, Insalubridade e Contracheque */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-700/60 pb-3 print:hidden">
                 <button
                   type="button"
-                  onClick={() => setCollaboratorTab('EXTRATO')}
+                  onClick={() => setCollaboratorTab('BANCO')}
                   className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
-                    collaboratorTab === 'EXTRATO'
+                    collaboratorTab === 'BANCO'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
                       : isDark ? 'bg-[#16243D] hover:bg-[#233654] text-gray-300' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                   }`}
                 >
                   <Clock className="w-4 h-4" />
-                  <span>Banco de Horas & Insalubridade</span>
+                  <span>Banco de Horas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCollaboratorTab('INSALUBRIDADE')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
+                    collaboratorTab === 'INSALUBRIDADE'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                      : isDark ? 'bg-[#16243D] hover:bg-[#233654] text-gray-300' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <Biohazard className="w-4 h-4 text-amber-300" />
+                  <span>Insalubridade</span>
                 </button>
 
                 <button
@@ -661,7 +674,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
               )}
 
               {/* RENDERIZAÇÃO: BANCO DE HORAS & INSALUBRIDADE */}
-              {collaboratorTab === 'EXTRATO' && (
+              {collaboratorTab === 'BANCO' && (
                 <div className="space-y-6">
 
               {/* --------------------------------------------------- */}
@@ -809,6 +822,11 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                 </div>
               </div>
 
+              </div>
+              )}
+
+              {collaboratorTab === 'INSALUBRIDADE' && (
+              <div>
               {/* --------------------------------------------------- */}
               {/* CARD DE INFORMAÇÕES DE INSALUBRIDADE & LAUDOS NR-15 */}
               {/* --------------------------------------------------- */}
@@ -899,6 +917,12 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                   </div>
                 )}
               </div>
+
+              </div>
+              )}
+
+              {collaboratorTab === 'BANCO' && (
+                <div className="space-y-6">
 
               {/* --------------------------------------------------- */}
               {/* VISÃO MOBILE: SANFONA / ACCORDION DE EXTRATO       */}
@@ -1115,7 +1139,6 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
               </div>
               </div>
               )}
-
             </div>
           )
         )}
