@@ -418,7 +418,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
               </div>
             )}
             
-            <div className="space-y-1">
+            <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <h1 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {currentEmployee.nome}
@@ -451,12 +451,29 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
                 <span>UO Execução: {currentEmployee.uoExecucaoCodigo || 'Não informado'}</span>
                 <span>•</span>
                 <span>Departamento Original: {currentEmployee.departamentoOriginal || '—'}</span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                  Admissão: {currentEmployee.dataAdmissao}
-                </span>
-                <span>•</span>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5 pt-1">
+                <div className={`rounded-xl border p-2.5 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className={`text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                    E-mail
+                  </div>
+                  <div className={`mt-1 text-xs break-all ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {currentEmployee.email || 'Não informado'}
+                  </div>
+                </div>
+
+                <div className={`rounded-xl border p-2.5 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className={`text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                    Telefone
+                  </div>
+                  <div className={`mt-1 text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {currentEmployee.telefone || currentEmployee.celular || 'Não informado'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                   currentEmployee.grauInsalubridadeFixa === '40%'
                     ? isDark ? 'bg-red-950/40 text-red-300 border-red-800/40' : 'bg-red-50 text-red-700 border-red-200'
@@ -473,6 +490,13 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
                       {employeeInsalubrities.length} laudo(s)
                     </span>
                   )}
+                </span>
+
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  isDark ? 'bg-[#243756] text-[#94A3B8] border-[#335075]' : 'bg-slate-100 text-slate-700 border-slate-200'
+                }`}>
+                  <Calendar className="w-3 h-3 text-blue-500" />
+                  Admissão: {currentEmployee.dataAdmissao || 'Não informado'}
                 </span>
               </div>
             </div>
