@@ -56,6 +56,7 @@ import {
   carregarUnidadesOrganizacionais,
   listarUnidadesOrganizacionais,
 } from '../constants/unidadesOrganizacionais';
+import { resolveEmployeeOrgInfo } from '../utils/employeeOrgHelper';
 
 interface EmployeeManagementProps {
   employees: Employee[];
@@ -70,7 +71,7 @@ interface EmployeeManagementProps {
 }
 
 export type BalanceFilter = 'TODOS' | 'CREDOR' | 'DEVEDOR' | 'ZERADO';
-export type SortKey = 'nome' | 'saldo' | 'matricula' | 'funcao' | 'sede' | 'dataAdmissao' | 'status' | 'statusBanco';
+export type SortKey = 'nome' | 'saldo' | 'matricula' | 'funcao' | 'sede' | 'lotacao' | 'localTrabalho' | 'setor' | 'dataAdmissao' | 'status' | 'statusBanco';
 export type MobileSortOption = 'nome_asc' | 'nome_desc' | 'saldo_asc' | 'saldo_desc';
 
 export interface SortConfig {
@@ -90,7 +91,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 0. Detecção Responsiva de Mobile (< 768px)
   const [isMobile, setIsMobile] = useState<boolean>(() => {
@@ -134,21 +134,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   });
 
   const [mobileExpandedMatricula, setMobileExpandedMatricula] = useState<string | null>(null);
-  
-  // CSV Import State
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<{
-    processed: number;
-    total: number;
-    percent: number;
-    currentName?: string;
-    statusText?: string;
-  } | null>(null);
-  const [importFeedback, setImportFeedback] = useState<{
-    success: boolean;
-    message: string;
-    errors?: string[];
-  } | null>(null);
 
   // Manual Employee Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -183,23 +168,31 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     return employees
       .map((emp) => {
         const bal = getEmployeeTotalBalance(emp.matricula, employees, records);
-        return { emp, bal };
+        const org = resolveEmployeeOrgInfo(emp, constructionSites);
+        return { emp, bal, org };
       })
-      .filter(({ emp, bal }) => {
+      .filter(({ emp, bal, org }) => {
         // 1. Filtro de Sede
-        if (filterSede !== 'TODAS' && emp.sedeCodigo !== filterSede) {
+        if (filterSede !== 'TODAS' && org.sedeCodigo !== filterSede && emp.sedeCodigo !== filterSede) {
           return false;
         }
 
-        const setor = emp.lotacaoUoCodigo || '';
-        if (filterSetor !== 'TODOS' && setor !== filterSetor) return false;
+        // 2. Filtro de Setor / UO
+        if (filterSetor !== 'TODOS') {
+          const matchSetor = 
+            emp.lotacaoUoCodigo === filterSetor ||
+            emp.uoExecucaoCodigo === filterSetor ||
+            org.setorCodigo === filterSetor ||
+            org.lotacaoCodigo === filterSetor;
+          if (!matchSetor) return false;
+        }
 
-        // 2. Filtro de Status Contratual
+        // 3. Filtro de Status Contratual
         if (filterStatus !== 'TODOS' && emp.status !== filterStatus) {
           return false;
         }
 
-        // 3. Filtro Rápido de Saldo (Pills)
+        // 4. Filtro Rápido de Saldo (Pills)
         if (balanceFilter === 'CREDOR' && bal.saldoTotalHoras <= 0.05) {
           return false;
         }
@@ -210,15 +203,24 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
           return false;
         }
 
-        // 4. Busca Textual por Nome, Matrícula ou Função/Cargo
+        // 5. Busca Textual por Nome, Matrícula, Função ou Localização/Setor
         if (searchTerm.trim()) {
           const q = searchTerm.toLowerCase().trim();
           const matchMat = emp.matricula.toLowerCase().includes(q);
           const matchNome = emp.nome.toLowerCase().includes(q);
           const matchFunc = (emp.funcao || emp.cargo || '').toLowerCase().includes(q);
-          const matchUo = [emp.sedeCodigo, emp.lotacaoUoCodigo, emp.uoExecucaoCodigo, emp.canteiroExecucaoId, emp.departamentoOriginal]
-            .some((value) => (value || '').toLowerCase().includes(q));
-          if (!matchMat && !matchNome && !matchFunc && !matchUo) {
+          const matchOrg = [
+            org.lotacaoNome,
+            org.lotacaoSigla,
+            org.sedeCodigo,
+            org.sedeNome,
+            org.localTrabalhoNome,
+            org.setorNome,
+            org.setorSigla,
+            emp.departamentoOriginal
+          ].some((value) => (value || '').toLowerCase().includes(q));
+
+          if (!matchMat && !matchNome && !matchFunc && !matchOrg) {
             return false;
           }
         }
@@ -232,7 +234,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             comparison = a.emp.nome.localeCompare(b.emp.nome, 'pt-BR', { sensitivity: 'base' });
             break;
           case 'saldo':
-            // Ordenação numérica real considerando positivos e negativos
             comparison = a.bal.saldoTotalHoras - b.bal.saldoTotalHoras;
             break;
           case 'matricula':
@@ -242,7 +243,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             comparison = (a.emp.funcao || '').localeCompare(b.emp.funcao || '', 'pt-BR', { sensitivity: 'base' });
             break;
           case 'sede':
-            comparison = (a.emp.sedeCodigo || '').localeCompare(b.emp.sedeCodigo || '', 'pt-BR');
+          case 'lotacao':
+            comparison = a.org.lotacaoNome.localeCompare(b.org.lotacaoNome, 'pt-BR');
+            break;
+          case 'localTrabalho':
+            comparison = a.org.localTrabalhoNome.localeCompare(b.org.localTrabalhoNome, 'pt-BR');
+            break;
+          case 'setor':
+            comparison = a.org.setorFormatado.localeCompare(b.org.setorFormatado, 'pt-BR');
             break;
           case 'dataAdmissao':
             comparison = (a.emp.dataAdmissao || '').localeCompare(b.emp.dataAdmissao || '');
@@ -258,7 +266,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         }
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
-  }, [employees, records, filterSede, filterSetor, filterStatus, balanceFilter, searchTerm, sortConfig]);
+  }, [employees, records, constructionSites, filterSede, filterSetor, filterStatus, balanceFilter, searchTerm, sortConfig]);
 
   // -------------------------------------------------------------
   // HANDLERS DE ORDENAÇÃO (MOBILE & DESKTOP)
@@ -273,11 +281,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
         setSortConfig({ key: 'nome', direction: 'desc' });
         break;
       case 'saldo_asc':
-        // Mais Devedor (Menor Saldo Primeiro: ex -20h antes de +10h)
         setSortConfig({ key: 'saldo', direction: 'asc' });
         break;
       case 'saldo_desc':
-        // Mais Credor (Maior Saldo Primeiro: ex +20h antes de -10h)
         setSortConfig({ key: 'saldo', direction: 'desc' });
         break;
     }
@@ -313,15 +319,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   const handleDownloadTemplate = () => {
     const csvContent = generateEmployeesTemplateCSV();
     triggerFileDownload(csvContent, 'template_colaboradores_banco_horas.csv');
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.target.value = '';
-    setImportFeedback({
-      success: false,
-      message: 'O fluxo CSV legado foi descontinuado. Use Importar CSV (UOs & Conciliação) para o upsert oficial.',
-    });
-    setIsImportUoModalOpen(true);
   };
 
   const handleOpenAddModal = () => {
@@ -436,10 +433,10 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
               </button>
             </div>
 
-            {/* Ação Rápida Mobile: Importar CSV Legado com UOs */}
+            {/* Ação Rápida Mobile: Importar Colaboradores CSV Oficial */}
             <button
               type="button"
-              id="btn-mobile-importar-uo-legado"
+              id="btn-mobile-importar-colaboradores"
               onClick={() => setIsImportUoModalOpen(true)}
               className={`w-full py-2.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all active:scale-[0.98] cursor-pointer shadow-xs ${
                 isDark 
@@ -447,8 +444,8 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
               }`}
             >
-              <Layers className="w-4 h-4 text-blue-400" />
-              Importar CSV Legado (UOs & Conciliação)
+              <UploadCloud className="w-4 h-4 text-blue-400" />
+              Importar Colaboradores (CSV)
             </button>
           </div>
 
@@ -461,7 +458,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 <p className="text-xs font-semibold">Nenhum colaborador encontrado com os filtros atuais.</p>
               </div>
             ) : (
-              filteredAndSortedEmployees.map(({ emp, bal }) => {
+              filteredAndSortedEmployees.map(({ emp, bal, org }) => {
                 const isPositivo = bal.saldoTotalHoras >= 0;
                 const formattedSaldo = bal.saldoTotalHoras > 0 
                   ? `+${bal.saldoTotalHoras.toFixed(1)}h` 
@@ -481,9 +478,38 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       <p className={`font-bold text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
                         {emp.nome}
                       </p>
-                      <p className={`text-xs mt-0.5 font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
-                        Matrícula: {emp.matricula}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px]">
+                        <span className={`font-mono font-medium ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+                          #{emp.matricula}
+                        </span>
+                        <span className="opacity-40">•</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                          isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                          {org.sedeCodigo}
+                        </span>
+                        <span className={`truncate max-w-28 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          {org.lotacaoNome}
+                        </span>
+                        {org.temSetor && (
+                          <>
+                            <span className="opacity-40">•</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                              isDark ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
+                            }`}>
+                              {org.setorSigla || org.setorNome}
+                            </span>
+                          </>
+                        )}
+                        {org.isDeslocado && (
+                          <>
+                            <span className="opacity-40">•</span>
+                            <span className={`text-[10px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                              {org.localTrabalhoNome}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className={`px-3 py-1 rounded-full font-bold text-sm shrink-0 font-mono ${
                       isPositivo 
@@ -563,51 +589,19 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 aria-label="Baixar Template CSV"
                 onClick={handleDownloadTemplate}
               />
-              
-              <div className="relative inline-flex group">
-                <label 
-                  aria-label="Importar Base de Colaboradores CSV"
-                  className={`w-9 h-9 p-2 rounded-xl inline-flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-95 border ${
-                    isImporting
-                      ? 'bg-blue-900/40 text-blue-400 border-blue-700/50 cursor-not-allowed animate-pulse'
-                      : isDark 
-                        ? 'text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 border-emerald-800/40' 
-                        : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
-                  }`}
-                >
-                  {isImporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                  ) : (
-                    <UploadCloud className="w-4 h-4" />
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv,text/csv"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    disabled={isImporting}
-                  />
-                </label>
-                <div
-                  role="tooltip"
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none whitespace-nowrap px-2.5 py-1.5 text-xs font-medium rounded-lg shadow-xl border bg-[#111317] dark:bg-[#1E3252] text-white border-[#335075] dark:border-[#383D4A]"
-                >
-                  {isImporting ? 'Processando importação...' : 'Importar Arquivo CSV de Colaboradores'}
-                </div>
-              </div>
 
               <IconButton
-                id="btn-colaboradores-importar-uo-legado"
-                icon={Layers}
+                id="btn-colaboradores-importar-csv"
+                icon={UploadCloud}
                 variant="primary"
                 size="md"
-                tooltip="Importar CSV Legado (UOs, Normalização & Conciliação Interativa)"
-                aria-label="Importar CSV Legado UO"
+                tooltip="Importar Colaboradores (Planilha CSV com Conciliação de UOs e Setores)"
+                aria-label="Importar Colaboradores CSV"
                 onClick={() => setIsImportUoModalOpen(true)}
               />
 
               <IconButton
+                id="btn-colaboradores-novo-colaborador"
                 icon={UserPlus}
                 variant="primary"
                 size="md"
@@ -617,95 +611,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
               />
             </div>
           </div>
-
-          {/* Active Import Progress Banner */}
-          {isImporting && (
-            <div className={`p-4 rounded-xl border space-y-2.5 text-xs shadow-md transition-all animate-fadeIn ${
-              isDark ? 'bg-[#16243D] border-blue-500/40 text-[#E2E8F0]' : 'bg-blue-50/90 border-blue-200 text-blue-950'
-            }`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="p-1.5 rounded-lg bg-blue-600/20 text-blue-500 shrink-0">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-blue-600 dark:text-blue-400">
-                        Importando e Sincronizando Colaboradores
-                      </p>
-                      {importProgress?.total ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600/20 text-blue-600 dark:text-blue-300 border border-blue-500/30">
-                          {importProgress.processed} de {importProgress.total}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className={`text-xs truncate ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                      {importProgress?.currentName 
-                        ? `Sincronizando: ${importProgress.currentName}` 
-                        : importProgress?.statusText || 'Lendo dados e validando registros...'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-base font-black font-mono text-blue-600 dark:text-blue-400">
-                    {importProgress?.percent ?? 0}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress Bar Track */}
-              <div className={`h-2.5 w-full rounded-full overflow-hidden p-0.5 border ${
-                isDark ? 'bg-[#0B1426] border-[#243756]' : 'bg-slate-200 border-slate-300'
-              }`}>
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 transition-all duration-300 ease-out shadow-sm"
-                  style={{ 
-                    width: `${Math.max(importProgress?.total ? (importProgress?.percent || 2) : 10, 2)}%` 
-                  }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                <span>Tratamento UPSERT (evita duplicação por CPF e Matrícula)</span>
-                <span>Gravando no Firestore...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Import Feedback Banner */}
-          {importFeedback && (
-            <div className={`p-4 rounded-xl border flex items-start justify-between gap-3 text-xs ${
-              importFeedback.success 
-                ? isDark ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : isDark ? 'bg-red-950/40 border-red-800/60 text-red-300' : 'bg-red-50 border-red-200 text-red-800'
-            }`}>
-              <div className="flex items-start gap-2.5">
-                {importFeedback.success ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <p className="font-bold text-sm">{importFeedback.message}</p>
-                  {importFeedback.errors && importFeedback.errors.length > 0 && (
-                    <ul className={`mt-1.5 list-disc list-inside space-y-0.5 text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                      {importFeedback.errors.slice(0, 3).map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setImportFeedback(null)}
-                className={`font-bold text-xs cursor-pointer ${isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                Fechar
-              </button>
-            </div>
-          )}
 
           {/* Filter, Search & Balance Pills Bar */}
           <div className={`p-4 rounded-2xl border shadow-xs space-y-3.5 ${
@@ -984,24 +889,43 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </th>
 
-                    {/* 4. Lotação / Canteiro */}
+                    {/* 4. Lotação (De onde ele é) */}
                     <th 
-                      onClick={() => handleSort('sede')}
+                      onClick={() => handleSort('lotacao')}
                       className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
-                      title="Clique para ordenar por Sede"
+                      title="Clique para ordenar por Lotação (Origem)"
                     >
                       <div className="flex items-center gap-1">
-                        <span>Sede</span>
-                        {renderSortIcon('sede')}
+                        <span>Lotação</span>
+                        {renderSortIcon('lotacao')}
                       </div>
                     </th>
 
-                    <th className="py-3 px-4">Lotação</th>
-                    <th className="py-3 px-4">UO Execução</th>
-                    <th className="py-3 px-4">Canteiro</th>
-                    <th className="py-3 px-4">Departamento Original</th>
+                    {/* 5. Local de Trabalho (Onde está trabalhando) */}
+                    <th 
+                      onClick={() => handleSort('localTrabalho')}
+                      className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
+                      title="Clique para ordenar por Local de Trabalho"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Local de Trabalho</span>
+                        {renderSortIcon('localTrabalho')}
+                      </div>
+                    </th>
 
-                    {/* 5. Data Admissão */}
+                    {/* 6. Setor (De qual setor se existir) */}
+                    <th 
+                      onClick={() => handleSort('setor')}
+                      className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
+                      title="Clique para ordenar por Setor"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Setor</span>
+                        {renderSortIcon('setor')}
+                      </div>
+                    </th>
+
+                    {/* 7. Data Admissão */}
                     <th 
                       onClick={() => handleSort('dataAdmissao')}
                       className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
@@ -1013,7 +937,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </th>
 
-                    {/* 6. Status Contratual */}
+                    {/* 8. Status Contratual */}
                     <th 
                       onClick={() => handleSort('status')}
                       className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
@@ -1025,7 +949,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </th>
 
-                    {/* 7. Saldo Atual SPTF (Numérico Real) */}
+                    {/* 9. Saldo Atual SPTF (Numérico Real) */}
                     <th 
                       onClick={() => handleSort('saldo')}
                       className="py-3 px-4 text-right cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
@@ -1037,7 +961,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </th>
 
-                    {/* 8. Status Banco */}
+                    {/* 10. Status Banco */}
                     <th 
                       onClick={() => handleSort('statusBanco')}
                       className="py-3 px-4 text-center cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
@@ -1057,7 +981,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 }`}>
                   {filteredAndSortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={13} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                      <td colSpan={11} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                         <div className="flex flex-col items-center justify-center gap-2">
                           <AlertCircle className="w-6 h-6 text-gray-500" />
                           <p className="font-semibold text-sm">Nenhum colaborador localizado com os filtros selecionados.</p>
@@ -1081,7 +1005,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    filteredAndSortedEmployees.map(({ emp, bal }) => {
+                    filteredAndSortedEmployees.map(({ emp, bal, org }) => {
                       return (
                         <tr key={emp.id} className={`transition-colors ${isDark ? 'hover:bg-[#1E3252]' : 'hover:bg-slate-50/80'}`}>
                           <td className={`py-3.5 px-4 font-mono font-semibold whitespace-nowrap ${
@@ -1124,28 +1048,64 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                           <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
                             {emp.funcao}
                           </td>
+
+                          {/* Lotação (De onde ele é) */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 font-bold rounded text-[10px] border ${
-                              isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
-                              {emp.sedeCodigo || 'Não informado'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 font-bold font-mono rounded text-[10px] border shrink-0 ${
+                                isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
+                                {org.sedeCodigo}
+                              </span>
+                              <span className={`text-xs font-medium ${isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}`}>
+                                {org.lotacaoNome}
+                              </span>
+                            </div>
                           </td>
-                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                            {emp.lotacaoUoCodigo || 'Não informado'}
+
+                          {/* Local de Trabalho (Onde está trabalhando) */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs ${isDark ? 'text-[#E2E8F0]' : 'text-slate-700'}`}>
+                                {org.localTrabalhoNome}
+                              </span>
+                              {org.isEmCanteiro && (
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                                  isDark ? 'bg-amber-950/40 text-amber-400 border-amber-800/40' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>
+                                  Canteiro
+                                </span>
+                              )}
+                              {org.isDeslocado && !org.isEmCanteiro && (
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
+                                  isDark ? 'bg-blue-950/40 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}>
+                                  Deslocado
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                            {emp.uoExecucaoCodigo || 'Não informado'}
-                          </td>
-                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                            {(() => {
-                              if (!emp.canteiroExecucaoId) return 'Não informado';
-                              const site = constructionSites.find((item) => item.id === emp.canteiroExecucaoId);
-                              return site?.nome || site?.name || site?.codigo || site?.code || emp.canteiroExecucaoId;
-                            })()}
-                          </td>
-                          <td className={`py-3.5 px-4 max-w-48 truncate ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`} title={emp.departamentoOriginal || '—'}>
-                            {emp.departamentoOriginal || '—'}
+
+                          {/* Setor (De qual setor se existir) */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            {org.temSetor ? (
+                              <div className="flex items-center gap-1.5">
+                                {org.setorSigla && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border shrink-0 ${
+                                    isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
+                                  }`}>
+                                    {org.setorSigla}
+                                  </span>
+                                )}
+                                <span className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                                  {org.setorNome || org.setorSigla}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className={`text-xs font-mono ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                —
+                              </span>
+                            )}
                           </td>
                           <td className={`py-3.5 px-4 whitespace-nowrap ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
                             {emp.dataAdmissao}

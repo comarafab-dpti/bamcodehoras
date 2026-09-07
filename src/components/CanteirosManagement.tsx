@@ -4,6 +4,8 @@ import { InfoTooltip } from './InfoTooltip';
 import { canteiroService } from '../services/canteiroService';
 import { firestoreService } from '../services/firestoreService';
 import { localCache, CACHE_KEYS } from '../services/localCache';
+import { SetoresManagementTab } from './SetoresManagementTab';
+import { setorService } from '../services/setorService';
 import { 
   Building2, 
   Plus, 
@@ -33,11 +35,29 @@ interface CanteirosManagementProps {
 
 export const CanteirosManagement: React.FC<CanteirosManagementProps> = ({
   constructionSites,
+  employees,
+  insalubrityRecords,
   onSaveSite,
   onDeleteSite,
   theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
+
+  // Navegação entre abas: 'canteiros' (Frentes Físicas) ou 'setores' (Divisões/Seções)
+  const [activeTab, setActiveTab] = useState<'canteiros' | 'setores'>('canteiros');
+  const [setoresCount, setSetoresCount] = useState<number>(() => {
+    return setorService.getSetoresAtuais().setores.length;
+  });
+
+  // Assinatura para atualizar contador de setores
+  useEffect(() => {
+    const unsub = setorService.subscribeSetores((setores) => {
+      setSetoresCount(setores.length);
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, []);
 
   // Real-time backend state
   const [sites, setSites] = useState<ConstructionSite[]>(constructionSites || []);
@@ -491,6 +511,62 @@ export const CanteirosManagement: React.FC<CanteirosManagementProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* SELETOR DE ABAS: CANTEIROS DE OBRAS vs GESTÃO DE SETORES      */}
+      {/* ------------------------------------------------------------- */}
+      <div className={`p-1.5 rounded-2xl border flex flex-wrap items-center gap-2 w-full sm:w-fit ${
+        isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200 shadow-xs'
+      }`}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('canteiros')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'canteiros'
+              ? 'bg-amber-600 text-white shadow-md shadow-amber-900/30'
+              : isDark
+                ? 'text-slate-400 hover:text-slate-200 hover:bg-[#1B2D4A]'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Canteiros de Obras</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+            activeTab === 'canteiros'
+              ? 'bg-amber-700/80 text-white'
+              : isDark ? 'bg-[#243756] text-slate-300' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {sites.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('setores')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'setores'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
+              : isDark
+                ? 'text-slate-400 hover:text-slate-200 hover:bg-[#1B2D4A]'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Gestão de Setores (UOs)</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+            activeTab === 'setores'
+              ? 'bg-blue-700/80 text-white'
+              : isDark ? 'bg-[#243756] text-slate-300' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {setoresCount}
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'setores' ? (
+        <SetoresManagementTab employees={employees} theme={theme} />
+      ) : (
+        <>
 
       {/* ------------------------------------------------------------- */}
       {/* FILTROS RÁPIDOS (BUSCA, SEDE, STATUS)                         */}
@@ -1059,6 +1135,8 @@ export const CanteirosManagement: React.FC<CanteirosManagementProps> = ({
 
           </div>
         </div>
+      )}
+      </>
       )}
 
     </div>

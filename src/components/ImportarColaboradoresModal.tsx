@@ -396,7 +396,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
                 <span className={`px-2 py-0.5 text-[10px] font-semibold font-mono rounded-full border ${
                   isDark ? 'bg-[#243756] text-blue-300 border-[#335075]' : 'bg-blue-100 text-blue-700 border-blue-200'
                 }`}>
-                  CSV Legado • 22 Colunas
+                  Planilha CSV • 22 Colunas
                 </span>
               </div>
               <p className={`text-xs mt-0.5 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
@@ -506,7 +506,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
                           {isLendoCsv ? 'Processando e higienizando CSV...' : 'Clique para selecionar ou arraste o arquivo CSV aqui'}
                         </p>
                         <p className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                          Suporta o layout padrão legado de 22 colunas (com CPF, matrícula, cargo e departamentos da COMARA)
+                          Suporta o layout padrão oficial de 22 colunas (com CPF, matrícula, cargo e departamentos da COMARA)
                         </p>
                       </div>
 
