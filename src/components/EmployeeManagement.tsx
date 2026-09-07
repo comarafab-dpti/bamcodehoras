@@ -463,18 +463,24 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 const formattedSaldo = bal.saldoTotalHoras > 0 
                   ? `+${bal.saldoTotalHoras.toFixed(1)}h` 
                   : `${bal.saldoTotalHoras.toFixed(1)}h`;
+                const isExpanded = mobileExpandedMatricula === emp.matricula;
 
                 return (
                   <div 
                     key={emp.matricula} 
-                    onClick={() => onViewStatement(emp.matricula)}
-                    className={`p-3 rounded-lg border flex justify-between items-center shadow-xs cursor-pointer active:scale-[0.99] transition-all ${
+                    className={`rounded-lg border shadow-xs transition-all ${
                       isDark 
                         ? 'bg-[#16243D] border-[#243756] hover:border-blue-500/50' 
                         : 'bg-white border-slate-200 hover:border-blue-300'
                     }`}
                   >
-                    <div className="min-w-0 pr-3">
+                    <button
+                      type="button"
+                      onClick={() => setMobileExpandedMatricula(isExpanded ? null : emp.matricula)}
+                      aria-expanded={isExpanded}
+                      className="w-full p-3 flex justify-between items-center text-left cursor-pointer active:scale-[0.99] transition-all"
+                    >
+                      <div className="min-w-0 pr-3">
                       <p className={`font-bold text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
                         {emp.nome}
                       </p>
@@ -510,8 +516,9 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                           </>
                         )}
                       </div>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full font-bold text-sm shrink-0 font-mono ${
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                      <div className={`px-3 py-1 rounded-full font-bold text-sm font-mono ${
                       isPositivo 
                         ? isDark 
                           ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60' 
@@ -522,6 +529,31 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                     }`}>
                       {formattedSaldo}
                     </div>
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className={`px-3 pb-3 pt-1 border-t ${isDark ? 'border-[#243756]' : 'border-slate-200'}`}>
+                        <div className="grid grid-cols-1 gap-1.5 text-xs mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>E-mail:</span>
+                            <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>{emp.email || 'Não informado'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={isDark ? 'text-slate-500' : 'text-slate-400'}>Telefone:</span>
+                            <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>{emp.telefone || emp.celular || 'Não informado'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {onOpenSptfDispensa && (
+                            <IconButton icon={FileText} variant="ghost" size="xs" tooltip={`Emitir Dispensa de Expediente para ${emp.nome}`} aria-label={`Dispensa de ${emp.nome}`} onClick={(event) => { event.stopPropagation(); onOpenSptfDispensa(emp.matricula); }} />
+                          )}
+                          <IconButton icon={PlusCircle} variant="subtle" size="xs" tooltip={`Novo Lançamento para ${emp.nome}`} aria-label={`Lançar horas para ${emp.nome}`} onClick={(event) => { event.stopPropagation(); onQuickNewEntry(emp.matricula); }} />
+                          <IconButton icon={Eye} variant="secondary" size="xs" tooltip={`Extrato Completo de ${emp.nome}`} aria-label={`Ver extrato de ${emp.nome}`} onClick={(event) => { event.stopPropagation(); onViewStatement(emp.matricula); }} />
+                          <IconButton icon={Edit2} variant="ghost" size="xs" tooltip={`Editar Cadastro de ${emp.nome}`} aria-label={`Editar ${emp.nome}`} onClick={(event) => { event.stopPropagation(); handleOpenEditModal(emp); }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
