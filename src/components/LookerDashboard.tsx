@@ -45,8 +45,20 @@ import {
   ArrowDown,
   Eye,
   Zap,
-  Printer
+  Printer,
+  ShieldCheck,
+  Lock,
+  Unlock,
+  CheckCircle2
 } from 'lucide-react';
+import { CompetenciaControle } from '../services/competenciaService';
+import { 
+  MONTH_NAMES_FULL, 
+  getCompetenciaAnterior, 
+  getProximaCompetencia, 
+  normalizarCanteiroId, 
+  statusEfetivoCanteiro 
+} from '../services/competenciaEngine';
 
 interface LookerDashboardProps {
   employees: Employee[];
@@ -65,6 +77,13 @@ interface LookerDashboardProps {
   onDeleteRecord?: (id: string) => void | Promise<void>;
   userRole?: AdminRole | string;
   theme?: 'dark' | 'light';
+  currentCompetencia?: string;
+  competenciaControle?: CompetenciaControle | null;
+  competenciaAnteriorControle?: CompetenciaControle | null;
+  onSelectCompetencia?: (comp: string) => void;
+  onOpenCompetenciaModal?: () => void;
+  activeCanteiro?: string;
+  isSuperAdmin?: boolean;
 }
 
 type SortField = 'matricula' | 'nome' | 'sede' | 'saldo';
@@ -87,6 +106,13 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
   onDeleteRecord,
   userRole,
   theme = 'dark',
+  currentCompetencia,
+  competenciaControle,
+  competenciaAnteriorControle,
+  onSelectCompetencia,
+  onOpenCompetenciaModal,
+  activeCanteiro,
+  isSuperAdmin = false,
 }) => {
   const isDark = theme === 'dark';
   const isAuxDA = userRole === 'AUX_DA' || (userRole as string) === 'AUXILIAR_DA';
@@ -285,6 +311,22 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
     const start = (safeRecordsCurrentPage - 1) * recordsPageSize;
     return filteredRecords.slice(start, start + recordsPageSize);
   }, [filteredRecords, safeRecordsCurrentPage, recordsPageSize]);
+
+  // Dados de Competência Contábil para o 5º Card do Dashboard
+  const compAtual = currentCompetencia || new Date().toISOString().slice(0, 7);
+  const compAnterior = getCompetenciaAnterior(compAtual);
+  const compProxima = getProximaCompetencia(compAtual);
+  const [anoStr, mesStr] = compAtual.split('-');
+  const mesIndex = parseInt(mesStr, 10) - 1;
+  const mesNomeCompleto = MONTH_NAMES_FULL[mesIndex] || mesStr;
+  const statusCompetencia = competenciaControle?.status || 'ABERTO';
+
+  // Status de bloqueio do Canteiro
+  const normalizedCanteiro = normalizarCanteiroId(activeCanteiro);
+  const statusCanteiro = normalizedCanteiro 
+    ? statusEfetivoCanteiro(competenciaAnteriorControle?.statusCanteiros, normalizedCanteiro) 
+    : 'ABERTO';
+  const canteiroLiberado = isSuperAdmin || statusCanteiro === 'FECHADO';
 
   // Métricas Globais Looker Studio (KPIs)
   const kpis = useMemo(() => {
@@ -719,7 +761,7 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
 
       {/* CARDS DE MÉTRICAS (KPIs) - Ocultos para Aux de DA */}
       {!isAuxDA && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           {/* KPI 1: Saldo Acumulado Geral */}
           <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
             isDark 
@@ -838,6 +880,142 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
             <p className={`text-[10px] mt-1.5 font-mono ${isDark ? 'text-red-500/80' : 'text-red-700'}`}>
               Débito total de -{(kpis.totalFaltas * 8).toFixed(1)}h
             </p>
+          </div>
+
+          {/* KPI 5: Competência Contábil & Fechamento SPTF */}
+          <div className={`p-5 rounded-2xl border shadow-xs transition-all flex flex-col justify-between ${
+            isDark 
+              ? statusCompetencia === 'FECHADO'
+                ? 'bg-[#16243D] border-rose-900/50 hover:border-rose-700/70'
+                : 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
+              : statusCompetencia === 'FECHADO'
+                ? 'bg-white border-rose-200 hover:border-rose-300'
+                : 'bg-white border-gray-200 hover:border-gray-300'
+          }`}>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <p className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+                    Competência
+                  </p>
+                  <InfoTooltip 
+                    theme={theme}
+                    content="Controle contábil mensal do SPTF com apuração de deltas, transporte de saldos e fechamento obrigatório por canteiro de obras."
+                  />
+                </div>
+                <div className={`p-1.5 rounded-lg ${
+                  statusCompetencia === 'FECHADO'
+                    ? isDark ? 'bg-rose-950/40 text-rose-400' : 'bg-rose-50 text-rose-600'
+                    : statusCompetencia === 'REABERTO'
+                    ? isDark ? 'bg-amber-950/40 text-amber-400' : 'bg-amber-50 text-amber-600'
+                    : isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'
+                }`}>
+                  {statusCompetencia === 'FECHADO' ? (
+                    <Lock className="w-4 h-4" />
+                  ) : (
+                    <ShieldCheck className="w-4 h-4" />
+                  )}
+                </div>
+              </div>
+
+              {/* Seletor / Navegação de Mês */}
+              <div className="flex items-center justify-between gap-1 my-1">
+                {onSelectCompetencia ? (
+                  <button
+                    type="button"
+                    id="btn-kpi-prev-competencia"
+                    onClick={() => onSelectCompetencia(compAnterior)}
+                    title={`Mês anterior (${compAnterior})`}
+                    className={`p-1 rounded-md transition-colors cursor-pointer ${
+                      isDark ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                ) : <div className="w-4" />}
+
+                <div className="text-center flex-1 min-w-0">
+                  <h2 className={`text-base sm:text-lg font-mono font-medium truncate ${isDark ? 'text-[#E2E8F0]' : 'text-gray-900'}`}>
+                    {mesNomeCompleto} / {anoStr}
+                  </h2>
+                  <p className={`text-[10px] font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+                    ({compAtual})
+                  </p>
+                </div>
+
+                {onSelectCompetencia ? (
+                  <button
+                    type="button"
+                    id="btn-kpi-next-competencia"
+                    onClick={() => onSelectCompetencia(compProxima)}
+                    title={`Próximo mês (${compProxima})`}
+                    className={`p-1 rounded-md transition-colors cursor-pointer ${
+                      isDark ? 'hover:bg-slate-700/50 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : <div className="w-4" />}
+              </div>
+            </div>
+
+            {/* Status e Botão de Gestão */}
+            <div className="mt-2 pt-2 border-t border-slate-700/20">
+              <div className="flex items-center justify-between gap-1 text-[10px] font-mono mb-2">
+                <span className={`inline-flex items-center gap-1 font-bold uppercase px-1.5 py-0.5 rounded ${
+                  statusCompetencia === 'FECHADO'
+                    ? isDark ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-700'
+                    : statusCompetencia === 'REABERTO'
+                    ? isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+                    : isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {statusCompetencia === 'FECHADO' ? (
+                    <>
+                      <Lock className="w-2.5 h-2.5 shrink-0" />
+                      <span>Fechado</span>
+                    </>
+                  ) : statusCompetencia === 'REABERTO' ? (
+                    <>
+                      <Unlock className="w-2.5 h-2.5 shrink-0" />
+                      <span>Reaberto</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                      <span>Aberto</span>
+                    </>
+                  )}
+                </span>
+
+                <span className={`text-[9px] font-semibold truncate ${
+                  canteiroLiberado
+                    ? isDark ? 'text-emerald-400/90' : 'text-emerald-600'
+                    : isDark ? 'text-rose-400/90' : 'text-rose-600'
+                }`} title={`Canteiro: ${normalizedCanteiro || 'TODAS'}`}>
+                  {canteiroLiberado ? '✓ Liberado' : '⚠ Bloqueado'}
+                </span>
+              </div>
+
+              {onOpenCompetenciaModal && (
+                <button
+                  type="button"
+                  id="btn-kpi-gerenciar-competencia"
+                  onClick={onOpenCompetenciaModal}
+                  className={`w-full py-1.5 px-2 rounded-xl text-[11px] font-bold font-mono transition-all flex items-center justify-center gap-1.5 border active:scale-[0.98] cursor-pointer ${
+                    statusCompetencia === 'FECHADO'
+                      ? isDark
+                        ? 'bg-rose-950/40 border-rose-800/60 text-rose-300 hover:bg-rose-900/50'
+                        : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                      : isDark
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-xs shadow-blue-600/20'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-xs'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>{statusCompetencia === 'FECHADO' ? 'Ver Homologação' : 'Homologar / Fechar'}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

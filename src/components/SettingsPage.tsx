@@ -124,7 +124,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
 
     try {
-      await updateSettings(formData);
+      const { sedes: _legacySedes, ...institutionSettings } = formData;
+      await updateSettings(institutionSettings);
       setSaveSuccessNotice('Configurações institucionais gravadas com sucesso no Cloud Firestore!');
       if (onShowToast) onShowToast('Configurações institucionais atualizadas com sucesso!', 'success');
     } catch (err: any) {
@@ -403,8 +404,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         {activeSubTab === 'sedes' && (
           <SedesTab
-            sedes={formData.sedes || []}
-            onChange={(newSedes) => setFormData((prev) => ({ ...prev, sedes: newSedes }))}
             isDark={isDark}
           />
         )}

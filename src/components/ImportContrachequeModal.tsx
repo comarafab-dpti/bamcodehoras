@@ -4,10 +4,8 @@ import {
   parseMultipleComaraPdfs, 
   MultiPdfProgress,
   getDemoComaraPaystubs,
-  buildEmployeesFromPaystubs,
   normalizeMatricula
 } from '../utils/pdfParser';
-import { batchSyncEmployees, getSyncStatistics } from '../services/employeeSyncService';
 import { 
   UploadCloud, 
   FileText, 
@@ -235,35 +233,8 @@ export const ImportContrachequeModal: React.FC<ImportContrachequeModalProps> = (
     setErrorMessage(null);
 
     try {
-      // 1. Sincroniza colaboradores não registrados usando o novo UPSERT service
-      if (autoCreateEmployees && unregisteredEmployees.length > 0) {
-        const toCreate = unregisteredEmployees.filter(u => selectedUnregistered.has(u.matricula));
-        if (toCreate.length > 0) {
-          // Build employees from paystubs
-          const newEmps = buildEmployeesFromPaystubs(toCreate);
-          
-          // Create department code map from paystub sede field
-          const departmentCodesMap: Record<string, string | undefined> = {};
-          toCreate.forEach((emp) => {
-            departmentCodesMap[emp.matricula] = emp.sede || 'KO';
-          });
-
-          // Perform batch sync with new UPSERT logic
-          const syncResults = await batchSyncEmployees(
-            newEmps,
-            departmentCodesMap,
-            constructionSites,
-            (progress) => {
-              console.log(`Sincronização de colaboradores: ${progress.processed}/${progress.total}`);
-            }
-          );
-
-          const stats = getSyncStatistics(syncResults);
-          console.log(`Colaboradores sincronizados - Criados: ${stats.created}, Atualizados: ${stats.updated}`);
-        }
-      }
-
-      // 2. Salva os contracheques
+      // A atualização de colaboradores é exclusiva do pipeline CSV oficial.
+      // O importador de contracheques permanece restrito à folha.
       await onImportBatch(parsedPaystubs);
       onClose();
     } catch (err: any) {

@@ -1,4 +1,31 @@
-export type Branch = 'KO' | 'BE' | 'MN' | 'SP' | 'RJ';
+/**
+ * Código territorial institucional.
+ * A validação dos códigos cadastrados será feita por serviço próprio na Fase B;
+ * a tipagem mantém o código aberto para aceitar novas localidades, incluindo FB.
+ */
+export type CodigoTerritorial = string;
+
+/** Alias legado mantido durante a transição para o modelo canônico. */
+export type Branch = CodigoTerritorial;
+
+export type TipoUnidadeOrganizacional = 'SEDE' | 'DACO' | 'DECO' | 'SETOR' | 'NAO_CLASSIFICADO';
+
+export interface UnidadeOrganizacional {
+  codigo: string;             // Ex: 'DECO_KO', 'SEDE_BE', 'SETOR_SUPRIMENTOS'
+  nome: string;               // Ex: 'Destacamento de Engenharia de Coari'
+  siglaExibicao: string;      // Ex: 'DECO-KO'
+  tipo: TipoUnidadeOrganizacional;
+  sedeOuCanteiroPadrao?: string; // Ex: 'KO', 'MN', 'BE'
+  pai?: string;               // Ex: 'SEDE_BE', 'DECO_KO', 'COMARA'
+  ativa: boolean;
+  descricao?: string;
+}
+
+export interface ResultadoNormalizacaoUO {
+  codigoOriginal: string;
+  unidade: UnidadeOrganizacional;
+  confianca: 'ALTA' | 'MEDIA' | 'NAO_CLASSIFICADO';
+}
 
 export type EmployeeStatus = 'Ativo' | 'Inativo' | 'Afastado' | 'Férias';
 
@@ -148,6 +175,7 @@ export interface AdminUser {
   postoGraduacao?: string;
   funcao?: string;
   canteiroSede?: string;
+  uoGestao?: string;
   ativo: boolean;
   passwordHash?: string;
   senha?: string;
@@ -187,6 +215,13 @@ export interface Employee {
   sede: Branch; // Sede padrão/fixa
   sede_origem?: Branch; // Sede contratual / fixa
   sede_atual?: Branch; // Canteiro / sede temporária
+  sedeCodigo?: CodigoTerritorial; // Código territorial canônico
+  lotacaoUoCodigo?: string; // UO administrativa canônica
+  uoExecucaoCodigo?: string; // UO de execução canônica
+  canteiroExecucaoId?: string; // Canteiro físico de execução canônico
+  departamentoOriginal?: string; // Valor original recebido do sistema de origem
+  lotacao?: string; // UO de lotação administrativa (ex: SEDE_BE, SETOR_DL, DECO_KO)
+  uoExecucao?: string; // UO ou canteiro de execução operacional efetiva (ex: DECO_KO)
   secaoLotacao?: string;
   canteiroId?: string; // ID do canteiro/construção site (FK para ConstructionSite.id)
   dataInicioAlocacao?: string; // Início da missão
@@ -205,6 +240,11 @@ export interface Employee {
   horarioTrabalho?: string;
   email?: string;
   telefone?: string;
+  celular?: string;
+  dataNascimento?: string;
+  dataDemissao?: string;
+  pis?: string;
+  codigoExterno?: string;
   cpf?: string; // CPF em texto plano (retirado em futuras versões para LGPD)
   cpfHash?: string; // Hash SHA-256 do CPF limpo (para desduplicação segura)
   cpfMascarado?: string; // CPF mascarado (ex: ***.XXX.XXX-**)
@@ -218,6 +258,20 @@ export interface Employee {
   id_drive_foto?: string;
   criadoEm?: string;
   atualizadoEm?: string;
+}
+
+/** Alocação temporal de um colaborador, persistida como entidade própria. */
+export interface AlocacaoColaborador {
+  id: string;
+  colaboradorId: string; // matrícula
+  sedeCodigo: CodigoTerritorial;
+  uoCodigo: string;
+  canteiroId?: string;
+  dataInicio: string; // ISO
+  dataFim?: string; // ISO
+  ativa: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
 }
 
 export interface Attachment {

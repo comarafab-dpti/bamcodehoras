@@ -340,7 +340,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({
                 </div>
               )}
               <div className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-blue-600 rounded text-[9px] font-bold text-white uppercase tracking-wider">
-                {authenticatedEmployee.sede}
+                {authenticatedEmployee.sedeCodigo || 'Não informado'}
               </div>
             </div>
 
@@ -362,7 +362,7 @@ export const EmployeePortal: React.FC<EmployeePortalProps> = ({
               <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-[#94A3B8] font-mono">
                 <span className="flex items-center gap-1">
                   <Building2 className="w-3 h-3 text-blue-400" />
-                  Sede: {authenticatedEmployee.sede === 'KO' ? 'Coari (KO)' : authenticatedEmployee.sede === 'BE' ? 'Belém (BE)' : 'Manaus (MN)'}
+                  Sede: {authenticatedEmployee.sedeCodigo || 'Não informado'}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-amber-400" />

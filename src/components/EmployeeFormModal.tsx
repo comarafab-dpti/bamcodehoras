@@ -18,6 +18,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { Branch, ConstructionSite, Employee, EmployeeStatus } from '../types';
+import { UNIDADES_ORGANIZACIONAIS } from '../constants/unidadesOrganizacionais';
 import { firestoreService } from '../services/firestoreService';
 import { authService } from '../services/authService';
 
@@ -90,8 +91,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const [matricula, setMatricula] = useState('');
   const [nome, setNome] = useState('');
   const [funcao, setFuncao] = useState('Operador de Campo');
-  const [sede, setSede] = useState<Branch>('KO');
-  const [sedeAtual, setSedeAtual] = useState<Branch>('KO');
+  const [sedeCodigo, setSedeCodigo] = useState('');
+  const [lotacaoUoCodigo, setLotacaoUoCodigo] = useState('');
+  const [uoExecucaoCodigo, setUoExecucaoCodigo] = useState('');
+  const [canteiroExecucaoId, setCanteiroExecucaoId] = useState('');
+  const [departamentoOriginal, setDepartamentoOriginal] = useState('');
   const [isAlocadoTemporario, setIsAlocadoTemporario] = useState(false);
   const [dataInicioAlocacao, setDataInicioAlocacao] = useState('');
   const [dataFimAlocacao, setDataFimAlocacao] = useState('');
@@ -126,9 +130,12 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         setMatricula(employee.matricula);
         setNome(employee.nome);
         setFuncao(employee.funcao || employee.cargo || 'Operador de Campo');
-        setSede(employee.sede_origem || employee.sede || 'KO');
-        setSedeAtual(employee.sede_atual || employee.sede || 'KO');
-        setIsAlocadoTemporario(Boolean(employee.sede_atual && employee.sede_atual !== (employee.sede_origem || employee.sede)));
+        setSedeCodigo(employee.sedeCodigo || '');
+        setLotacaoUoCodigo(employee.lotacaoUoCodigo || '');
+        setUoExecucaoCodigo(employee.uoExecucaoCodigo || '');
+        setCanteiroExecucaoId(employee.canteiroExecucaoId || '');
+        setDepartamentoOriginal(employee.departamentoOriginal || '');
+        setIsAlocadoTemporario(Boolean(employee.canteiroExecucaoId && employee.dataInicioAlocacao));
         setDataInicioAlocacao(employee.dataInicioAlocacao || '');
         setDataFimAlocacao(employee.dataFimAlocacao || '');
         setDataAdmissao(employee.dataAdmissao || '2024-01-01');
@@ -146,8 +153,11 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         setMatricula(`MAT-${Math.floor(1000 + Math.random() * 9000)}`);
         setNome('');
         setFuncao('Operador de Campo');
-        setSede('KO');
-        setSedeAtual('KO');
+        setSedeCodigo('');
+        setLotacaoUoCodigo('');
+        setUoExecucaoCodigo('');
+        setCanteiroExecucaoId('');
+        setDepartamentoOriginal('');
         setIsAlocadoTemporario(false);
         setDataInicioAlocacao('');
         setDataFimAlocacao('');
@@ -227,9 +237,12 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
       nome: nome.trim(),
       funcao: funcao.trim() || 'Técnico de Manutenção',
       cargo: funcao.trim() || 'Técnico de Manutenção',
-      sede,
-      sede_origem: sede,
-      sede_atual: isAlocadoTemporario ? sedeAtual : sede,
+      sede: sedeCodigo as Branch,
+      sedeCodigo: sedeCodigo || undefined,
+      lotacaoUoCodigo: lotacaoUoCodigo || undefined,
+      uoExecucaoCodigo: uoExecucaoCodigo || undefined,
+      canteiroExecucaoId: canteiroExecucaoId || undefined,
+      departamentoOriginal: departamentoOriginal || undefined,
       dataInicioAlocacao: isAlocadoTemporario ? dataInicioAlocacao : undefined,
       dataFimAlocacao: isAlocadoTemporario ? dataFimAlocacao : undefined,
       dataAdmissao: dataAdmissao || '2024-01-15',
@@ -276,7 +289,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           matricula: cleanMatricula,
           nome: nome.trim(),
           funcao: funcao.trim(),
-          sede,
+          sedeCodigo,
           status,
         }
       });
@@ -472,7 +485,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 </div>
               </div>
 
-              {/* Matrícula & Sede / Canteiro de Origem */}
+              {/* Matrícula & campos organizacionais canônicos */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>
@@ -494,38 +507,55 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
                 <div>
                   <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>
-                    Sede / Canteiro <span className="text-red-500">*</span>
+                    Sede territorial
                   </label>
                   <select
-                    value={sede}
-                    onChange={(e) => setSede(e.target.value as Branch)}
+                    value={sedeCodigo}
+                    onChange={(e) => setSedeCodigo(e.target.value)}
                     className={`w-full px-3 py-2 rounded-lg font-semibold border focus:outline-hidden cursor-pointer ${
                       isDark 
                         ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20' 
                         : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
                     }`}
                   >
-                    {Array.isArray(constructionSites) && constructionSites.length > 0 ? (
-                      constructionSites.map((site) => {
-                        const code = (site.code || site.codigo || site.branch || site.sede || '').toUpperCase();
-                        const name = site.name || site.nome || `Canteiro ${code}`;
-                        return (
-                          <option key={site.id || code} value={code}>
-                            {code} — {name}
-                          </option>
-                        );
-                      })
-                    ) : (
-                      <>
-                        <option value="KO">KO — Coari (AM)</option>
-                        <option value="BE">BE — Belém (PA)</option>
-                        <option value="MN">MN — Manaus (AM)</option>
-                        <option value="SP">SP — São Paulo (SP)</option>
-                        <option value="RJ">RJ — Rio de Janeiro (RJ)</option>
-                      </>
-                    )}
+                    <option value="">Não informado</option>
+                    {Array.from(new Set([
+                      ...Object.values(UNIDADES_ORGANIZACIONAIS).map((uo) => uo.sedeOuCanteiroPadrao || ''),
+                      ...constructionSites.map((site) => (site.branch || site.sede || '').toUpperCase()),
+                    ].filter(Boolean))).map((codigo) => (
+                      <option key={codigo} value={codigo}>{codigo}</option>
+                    ))}
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>Lotação (UO)</label>
+                  <select value={lotacaoUoCodigo} onChange={(e) => setLotacaoUoCodigo(e.target.value)} className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden cursor-pointer ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'}`}>
+                    <option value="">Não informado</option>
+                    {Object.values(UNIDADES_ORGANIZACIONAIS).map((uo) => <option key={uo.codigo} value={uo.codigo}>{uo.codigo} — {uo.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>UO de Execução</label>
+                  <select value={uoExecucaoCodigo} onChange={(e) => setUoExecucaoCodigo(e.target.value)} className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden cursor-pointer ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'}`}>
+                    <option value="">Não informado</option>
+                    {Object.values(UNIDADES_ORGANIZACIONAIS).map((uo) => <option key={uo.codigo} value={uo.codigo}>{uo.codigo} — {uo.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>Departamento Original</label>
+                  <input type="text" value={departamentoOriginal} onChange={(e) => setDepartamentoOriginal(e.target.value)} readOnly={Boolean(employee?.departamentoOriginal)} placeholder="Não informado" className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'} ${employee?.departamentoOriginal ? 'opacity-70 cursor-not-allowed' : ''}`} />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>Canteiro de Execução</label>
+                <select value={canteiroExecucaoId} onChange={(e) => setCanteiroExecucaoId(e.target.value)} className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden cursor-pointer ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'}`}>
+                  <option value="">Não informado</option>
+                  {constructionSites.map((site) => <option key={site.id} value={site.id}>{site.nome || site.name || site.codigo || site.code || site.id}</option>)}
+                </select>
               </div>
 
               {/* Nome Completo */}
@@ -786,7 +816,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                     </label>
                     <InfoTooltip 
                       theme={theme}
-                      content={`As horas registradas durante a vigência da missão temporária serão computadas e visualizadas no canteiro selecionado (${sedeAtual}).`}
+                      content={`As horas registradas durante a vigência da missão temporária serão computadas e visualizadas no canteiro selecionado (${canteiroExecucaoId || 'Não informado'}).`}
                     />
                   </div>
                 </div>
@@ -799,33 +829,18 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                           Canteiro Alocado
                         </label>
                         <select
-                          value={sedeAtual}
-                          onChange={(e) => setSedeAtual(e.target.value as Branch)}
+                          value={canteiroExecucaoId}
+                          onChange={(e) => setCanteiroExecucaoId(e.target.value)}
                           className={`w-full px-2 py-1.5 rounded-lg text-xs font-bold border focus:outline-hidden cursor-pointer ${
                             isDark 
                               ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0] focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20' 
                               : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
                           }`}
                         >
-                          {Array.isArray(constructionSites) && constructionSites.length > 0 ? (
-                            constructionSites.map((site) => {
-                              const code = (site.code || site.codigo || site.branch || site.sede || '').toUpperCase();
-                              const name = site.name || site.nome || `Canteiro ${code}`;
-                              return (
-                                <option key={site.id || code} value={code}>
-                                  {code} — {name}
-                                </option>
-                              );
-                            })
-                          ) : (
-                            <>
-                              <option value="KO">KO — Coari</option>
-                              <option value="BE">BE — Belém</option>
-                              <option value="MN">MN — Manaus</option>
-                              <option value="SP">SP — São Paulo</option>
-                              <option value="RJ">RJ — Rio de Janeiro</option>
-                            </>
-                          )}
+                          <option value="">Não informado</option>
+                          {constructionSites.map((site) => (
+                            <option key={site.id} value={site.id}>{site.nome || site.name || site.codigo || site.code || site.id}</option>
+                          ))}
                         </select>
                       </div>
                       <div>

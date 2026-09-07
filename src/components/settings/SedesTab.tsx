@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { SedeInstituicao } from '../../types/institutionConfig';
+import React, { useEffect, useState } from 'react';
+import { ConstructionSite } from '../../types';
+import { canteiroService } from '../../services/canteiroService';
 import { CardSection, FormInput } from './FormControls';
 import { 
   Building2, 
@@ -16,16 +17,13 @@ import {
 } from 'lucide-react';
 
 interface SedesTabProps {
-  sedes: SedeInstituicao[];
-  onChange: (updatedSedes: SedeInstituicao[]) => void;
   isDark: boolean;
 }
 
 export const SedesTab: React.FC<SedesTabProps> = ({
-  sedes,
-  onChange,
   isDark,
 }) => {
+  const [sedes, setSedes] = useState<ConstructionSite[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
 
@@ -37,21 +35,33 @@ export const SedesTab: React.FC<SedesTabProps> = ({
   const [email, setEmail] = useState('');
   const [responsavel, setResponsavel] = useState('');
 
+  useEffect(() => {
+    canteiroService.listCanteiros()
+      .then(setSedes)
+      .catch((error) => console.warn('[SedesTab] Falha ao carregar canteiros:', error));
+  }, []);
+
+  const persistir = async (site: Partial<ConstructionSite>) => {
+    await canteiroService.saveCanteiro(site);
+    setSedes(await canteiroService.listCanteiros());
+  };
+
   const handleAddSede = () => {
     if (!codigo.trim() || !nome.trim()) return;
 
-    const newSede: SedeInstituicao = {
-      id: `sede-${codigo.trim().toLowerCase()}-${Date.now()}`,
+    void persistir({
+      id: `canteiro-${codigo.trim().toLowerCase()}`,
+      code: codigo.trim().toUpperCase(),
       codigo: codigo.trim().toUpperCase(),
+      name: nome.trim(),
       nome: nome.trim(),
+      address: endereco.trim(),
       endereco: endereco.trim(),
-      telefone: telefone.trim(),
-      email: email.trim(),
-      responsavel: responsavel.trim(),
-      ativa: true,
-    };
-
-    onChange([...sedes, newSede]);
+      chiefContact: telefone.trim(),
+      chefeContato: telefone.trim(),
+      chefeCanteiro: responsavel.trim(),
+      status: 'Ativo',
+    });
     setCodigo('');
     setNome('');
     setEndereco('');
@@ -62,18 +72,17 @@ export const SedesTab: React.FC<SedesTabProps> = ({
   };
 
   const handleDeleteSede = (id: string) => {
-    const filtered = sedes.filter((s) => s.id !== id);
-    onChange(filtered);
+    void canteiroService.deleteCanteiro(id).then(async () => setSedes(await canteiroService.listCanteiros()));
   };
 
   const handleToggleAtiva = (id: string) => {
-    const updated = sedes.map((s) => (s.id === id ? { ...s, ativa: !s.ativa } : s));
-    onChange(updated);
+    const site = sedes.find((s) => s.id === id);
+    if (site) void persistir({ ...site, status: site.status === 'Ativo' || site.status === 'ACTIVE' ? 'INACTIVE' : 'Ativo' });
   };
 
-  const handleUpdateSede = (id: string, partial: Partial<SedeInstituicao>) => {
-    const updated = sedes.map((s) => (s.id === id ? { ...s, ...partial } : s));
-    onChange(updated);
+  const handleUpdateSede = (id: string, partial: Partial<ConstructionSite>) => {
+    const site = sedes.find((s) => s.id === id);
+    if (site) void persistir({ ...site, ...partial });
   };
 
   return (
@@ -228,14 +237,14 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                             ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                             : 'bg-blue-100 text-blue-800 border border-blue-200'
                         }`}>
-                          {sede.codigo}
+                          {sede.codigo || sede.code}
                         </span>
                         <h4 className={`text-xs font-bold ${
-                          sede.ativa !== false 
+                            sede.status !== 'INACTIVE' && sede.status !== 'Encerrado'
                             ? isDark ? 'text-white' : 'text-slate-900'
                             : 'text-gray-400 line-through'
                         }`}>
-                          {sede.nome}
+                          {sede.nome || sede.name}
                         </h4>
                       </div>
 
@@ -243,12 +252,12 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                         type="button"
                         onClick={() => handleToggleAtiva(sede.id)}
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-colors ${
-                          sede.ativa !== false
+                          sede.status !== 'INACTIVE' && sede.status !== 'Encerrado'
                             ? isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : isDark ? 'bg-slate-800 text-gray-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'
                         }`}
                       >
-                        {sede.ativa !== false ? 'Ativa' : 'Inativa'}
+                        {sede.status !== 'INACTIVE' && sede.status !== 'Encerrado' ? 'Ativa' : 'Inativa'}
                       </button>
                     </div>
 
@@ -257,8 +266,8 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                       <div className="space-y-2 pt-2">
                         <input
                           type="text"
-                          value={sede.nome}
-                          onChange={(e) => handleUpdateSede(sede.id, { nome: e.target.value })}
+                          value={sede.nome || sede.name || ''}
+                          onChange={(e) => handleUpdateSede(sede.id, { nome: e.target.value, name: e.target.value })}
                           className={`w-full text-xs px-2.5 py-1.5 rounded-lg border ${
                             isDark ? 'bg-[#16243D] border-[#335075] text-white' : 'bg-white border-slate-300'
                           }`}
@@ -266,8 +275,8 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                         />
                         <input
                           type="text"
-                          value={sede.endereco}
-                          onChange={(e) => handleUpdateSede(sede.id, { endereco: e.target.value })}
+                          value={sede.endereco || sede.address || ''}
+                          onChange={(e) => handleUpdateSede(sede.id, { endereco: e.target.value, address: e.target.value })}
                           className={`w-full text-xs px-2.5 py-1.5 rounded-lg border ${
                             isDark ? 'bg-[#16243D] border-[#335075] text-white' : 'bg-white border-slate-300'
                           }`}
@@ -276,8 +285,8 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="text"
-                            value={sede.telefone || ''}
-                            onChange={(e) => handleUpdateSede(sede.id, { telefone: e.target.value })}
+                            value={sede.chefeContato || sede.chiefContact || ''}
+                            onChange={(e) => handleUpdateSede(sede.id, { chefeContato: e.target.value, chiefContact: e.target.value })}
                             className={`text-xs px-2.5 py-1.5 rounded-lg border ${
                               isDark ? 'bg-[#16243D] border-[#335075] text-white' : 'bg-white border-slate-300'
                             }`}
@@ -285,8 +294,8 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                           />
                           <input
                             type="text"
-                            value={sede.responsavel || ''}
-                            onChange={(e) => handleUpdateSede(sede.id, { responsavel: e.target.value })}
+                            value={sede.chefeCanteiro || ''}
+                            onChange={(e) => handleUpdateSede(sede.id, { chefeCanteiro: e.target.value })}
                             className={`text-xs px-2.5 py-1.5 rounded-lg border ${
                               isDark ? 'bg-[#16243D] border-[#335075] text-white' : 'bg-white border-slate-300'
                             }`}
@@ -296,22 +305,22 @@ export const SedesTab: React.FC<SedesTabProps> = ({
                       </div>
                     ) : (
                       <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                        {sede.endereco && (
+                        {(sede.endereco || sede.address) && (
                           <div className="flex items-start gap-1.5">
                             <MapPin className="w-3 h-3 shrink-0 mt-0.5 opacity-70" />
-                            <span className="line-clamp-2">{sede.endereco}</span>
+                            <span className="line-clamp-2">{sede.endereco || sede.address}</span>
                           </div>
                         )}
-                        {sede.telefone && (
+                        {(sede.chefeContato || sede.chiefContact) && (
                           <div className="flex items-center gap-1.5">
                             <Phone className="w-3 h-3 shrink-0 opacity-70" />
-                            <span>{sede.telefone}</span>
+                            <span>{sede.chefeContato || sede.chiefContact}</span>
                           </div>
                         )}
-                        {sede.responsavel && (
+                        {sede.chefeCanteiro && (
                           <div className="flex items-center gap-1.5">
                             <UserCheck className="w-3 h-3 shrink-0 opacity-70" />
-                            <span>Chefia: {sede.responsavel}</span>
+                            <span>Chefia: {sede.chefeCanteiro}</span>
                           </div>
                         )}
                       </div>

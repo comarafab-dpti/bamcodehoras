@@ -33,6 +33,7 @@ export interface EmployeeDayStatus {
   badge: string;
   entrada: string;
   saida: string;
+  producaoDispensa?: string;
   details?: string;
 }
 
@@ -297,14 +298,47 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
         badge: 'Férias',
         entrada: 'FÉRIAS',
         saida: formattedReturn,
+        producaoDispensa: '',
         details: returnDate ? `Férias (Retorno em ${returnDate})` : 'Em gozo de férias regulamentares'
       };
     }
 
     // -------------------------------------------------------------
-    // 2. CHECAGEM DE DISPENSA (SPTF / FOLGA / COMPENSAÇÃO)
+    // 2. CHECAGEM DE ACABOU BANHOU / PRODUÇÃO (CABO/BANHO)
     // -------------------------------------------------------------
-    // 2.1 Busca nas Guias de Dispensa SPTF
+    if (records && records.length > 0) {
+      const recAcabou = records.find(r => {
+        if (r.matricula !== emp.matricula) return false;
+        const recDate = toISODate(r.dataRegistro || r.data_ocorrencia);
+        if (recDate !== normalizedTarget) return false;
+        const tipo = String(r.tipoOcorrencia || (r as any).tipo_ocorrencia || '').toUpperCase();
+        const obs = String(r.observacao || '').toUpperCase();
+        return (
+          tipo === 'ACABOU_BANHOU' || 
+          obs.includes('ACABOU BANHOU') || 
+          obs.includes('CABO/BANHO') || 
+          obs.includes('CABO E BANHO') ||
+          (obs.includes('CABO') && obs.includes('BANHO'))
+        );
+      });
+
+      if (recAcabou) {
+        return {
+          isSpecial: true,
+          type: 'DISPENSA',
+          badge: 'Cabo/Banho',
+          entrada: '',
+          saida: '',
+          producaoDispensa: 'CABO/BANHO',
+          details: recAcabou.observacao || 'Produção / Dispensa (Cabo/Banho) - Missão Cumprida'
+        };
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 3. CHECAGEM DE DISPENSA (SPTF / FOLGA / COMPENSAÇÃO)
+    // -------------------------------------------------------------
+    // 3.1 Busca nas Guias de Dispensa SPTF
     if (allDispensas && allDispensas.length > 0) {
       const dispensaFound = allDispensas.find(d => {
         if (d.matricula !== emp.matricula) return false;
@@ -315,10 +349,13 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
 
       if (dispensaFound) {
         let saidaTexto = 'SPTF';
+        let producaoTexto = 'DISPENSA SPTF';
         if (dispensaFound.numeroGuia) {
           saidaTexto = dispensaFound.numeroGuia;
+          producaoTexto = `GUIA ${dispensaFound.numeroGuia}`;
         } else if (dispensaFound.horarioInicio && dispensaFound.horarioFim) {
           saidaTexto = `${dispensaFound.horarioInicio}-${dispensaFound.horarioFim}`;
+          producaoTexto = `DISP ${dispensaFound.horarioInicio}-${dispensaFound.horarioFim}`;
         }
 
         return {
@@ -327,12 +364,13 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
           badge: 'Dispensa',
           entrada: 'DISPENSA',
           saida: saidaTexto,
+          producaoDispensa: producaoTexto,
           details: dispensaFound.numeroGuia ? `Guia ${dispensaFound.numeroGuia} (${dispensaFound.totalHoras || 0}h)` : `Dispensa SPTF (${dispensaFound.totalHoras || 0}h)`
         };
       }
     }
 
-    // 2.2 Busca nos Registros de Ponto (TimeRecord)
+    // 3.2 Busca nos Registros de Ponto (TimeRecord)
     if (records && records.length > 0) {
       const recDispensa = records.find(r => {
         if (r.matricula !== emp.matricula) return false;
@@ -357,18 +395,20 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
         const obsUpper = String(recDispensa.observacao || '').toUpperCase();
         const tipoUpper = String(recDispensa.tipoOcorrencia || '').toUpperCase();
         const isSptf = obsUpper.includes('SPTF') || tipoUpper.includes('SPTF') || tipoUpper === 'DISPENSA_SPTF';
+        const isCabo = obsUpper.includes('CABO') || obsUpper.includes('BANHO') || tipoUpper === 'ACABOU_BANHOU';
         return {
           isSpecial: true,
           type: 'DISPENSA',
-          badge: 'Dispensa',
-          entrada: 'DISPENSA',
-          saida: isSptf ? 'SPTF' : 'COMPENSAÇÃO',
+          badge: isCabo ? 'Cabo/Banho' : 'Dispensa',
+          entrada: isCabo ? '' : 'DISPENSA',
+          saida: isCabo ? '' : (isSptf ? 'SPTF' : 'COMPENSAÇÃO'),
+          producaoDispensa: isCabo ? 'CABO/BANHO' : (isSptf ? 'DISPENSA SPTF' : 'DISPENSA'),
           details: recDispensa.observacao || 'Dispensa regulamentar'
         };
       }
     }
 
-    // 2.3 Status do Colaborador
+    // 3.3 Status do Colaborador
     if (empStatusLower.includes('dispensa') || empStatusLower.includes('folga') || (emp.motivoStatus || '').toUpperCase().includes('DISPENSA')) {
       return {
         isSpecial: true,
@@ -376,12 +416,13 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
         badge: 'Dispensa',
         entrada: 'DISPENSA',
         saida: 'SPTF',
+        producaoDispensa: 'DISPENSA',
         details: emp.observacao_status || 'Dispensa'
       };
     }
 
     // -------------------------------------------------------------
-    // 3. CHECAGEM DE ATESTADO MÉDICO OU LICENÇA
+    // 4. CHECAGEM DE ATESTADO MÉDICO OU LICENÇA
     // -------------------------------------------------------------
     if (records && records.length > 0) {
       const recMed = records.find(r => {
@@ -400,6 +441,7 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
           badge: 'Atestado',
           entrada: 'ATESTADO',
           saida: 'MÉDICO',
+          producaoDispensa: '',
           details: recMed.observacao || 'Atestado Médico'
         };
       }
@@ -420,13 +462,14 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
           badge: 'Licença',
           entrada: 'LICENÇA',
           saida: 'REGISTRADA',
+          producaoDispensa: '',
           details: 'Licença'
         };
       }
     }
 
     // -------------------------------------------------------------
-    // 4. REGULAR (ATIVO / PRESENTE)
+    // 5. REGULAR (ATIVO / PRESENTE)
     // -------------------------------------------------------------
     return {
       isSpecial: false,
@@ -434,6 +477,7 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
       badge: 'Presente',
       entrada: '',
       saida: '',
+      producaoDispensa: '',
       details: 'Disponível para entrada e saída regular'
     };
   };
@@ -615,6 +659,29 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
     window.print();
   };
 
+  const handleExportCSV = () => {
+    const headerRow = ['ITEM', 'NOME', 'FUNÇÃO', 'MATRÍCULA', 'ENTRADA', 'SAÍDA', 'PRODUÇÃO / DISPENSA (CABO/BANHO)', 'STATUS', 'ORIGEM'];
+    const rows = processedEmployeeList.map((item) => [
+      item.itemNumber,
+      `"${(item.emp.nome || '').replace(/"/g, '""')}"`,
+      `"${(item.emp.funcao || item.emp.cargo || '').replace(/"/g, '""')}"`,
+      `"${item.emp.matricula || ''}"`,
+      `"${item.statusInfo.entrada || ''}"`,
+      `"${item.statusInfo.saida || ''}"`,
+      `"${item.statusInfo.producaoDispensa || ''}"`,
+      `"${item.statusInfo.badge || ''}"`,
+      `"${item.sedeFixa || ''}"`
+    ]);
+    const csvContent = '\uFEFF' + [headerRow.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relacao_portaria_${selectedSede}_${selectedDate || 'hoje'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const emissionDateStr = new Date().toLocaleDateString('pt-BR');
   const emissionTimeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -755,6 +822,20 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              id="btn-portaria-exportar-csv-topo"
+              onClick={handleExportCSV}
+              className={`px-3 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 border cursor-pointer ${
+                isDark 
+                  ? 'bg-[#16243D] text-slate-300 border-[#243756] hover:bg-[#1E3252]' 
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+              }`}
+              title="Exportar dados da folha em formato CSV / Planilha"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span className="hidden sm:inline">Exportar CSV</span>
+            </button>
             <button
               type="button"
               id="btn-portaria-imprimir-topo"
@@ -991,49 +1072,59 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
                           <th 
                             rowSpan={2} 
                             className={`text-center font-bold px-1 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerText}`}
-                            style={{ width: '5%', border: '1px solid #000000' }}
+                            style={{ width: '4.5%', border: '1px solid #000000' }}
                           >
                             ITEM
                           </th>
                           <th 
                             rowSpan={2} 
                             className={`text-center font-bold px-1.5 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerText}`}
-                            style={{ width: '38%', border: '1px solid #000000' }}
+                            style={{ width: '31.5%', border: '1px solid #000000' }}
                           >
                             NOME
                           </th>
                           <th 
                             rowSpan={2} 
                             className={`text-center font-bold px-1.5 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerText}`}
-                            style={{ width: '33%', border: '1px solid #000000' }}
+                            style={{ width: '26%', border: '1px solid #000000' }}
                           >
                             FUNÇÃO
                           </th>
                           <th 
                             rowSpan={2} 
                             className={`text-center font-bold px-1 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerText}`}
-                            style={{ width: '8%', border: '1px solid #000000' }}
+                            style={{ width: '7%', border: '1px solid #000000' }}
                           >
                             MATR.
                           </th>
                           <th 
                             colSpan={2} 
                             className={`text-center font-bold px-1 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerText}`}
-                            style={{ width: '16%', border: '1px solid #000000' }}
+                            style={{ width: '15%', border: '1px solid #000000' }}
                           >
                             HORÁRIO
+                          </th>
+                          <th 
+                            rowSpan={2} 
+                            className={`text-center font-bold px-1 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerText}`}
+                            style={{ width: '16%', border: '1px solid #000000' }}
+                          >
+                            <div className="leading-tight">PRODUÇÃO / DISPENSA</div>
+                            <div className={`font-semibold ${rowMetrics.headerSubText} text-slate-700 tracking-tight leading-none mt-0.5`}>
+                              (CABO / BANHO)
+                            </div>
                           </th>
                         </tr>
                         <tr style={{ backgroundColor: '#F8F9FA' }}>
                           <th 
                             className={`text-center font-bold px-1 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerSubText}`}
-                            style={{ width: '8%', border: '1px solid #000000' }}
+                            style={{ width: '7.5%', border: '1px solid #000000' }}
                           >
                             ENTRADA
                           </th>
                           <th 
                             className={`text-center font-bold px-1 ${rowMetrics.headerPy} border border-black uppercase ${rowMetrics.headerSubText}`}
-                            style={{ width: '8%', border: '1px solid #000000' }}
+                            style={{ width: '7.5%', border: '1px solid #000000' }}
                           >
                             SAÍDA
                           </th>
@@ -1042,7 +1133,7 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
                       <tbody>
                         {items.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="text-center py-6 border border-black text-gray-500 italic">
+                            <td colSpan={7} className="text-center py-6 border border-black text-gray-500 italic">
                               Nenhum servidor encontrado para os parâmetros selecionados.
                             </td>
                           </tr>
@@ -1067,7 +1158,7 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
                                     }}
                                   >
                                     <td 
-                                      colSpan={6} 
+                                      colSpan={7} 
                                       className={`px-2 ${rowMetrics.bannerPy} border border-black font-bold uppercase ${rowMetrics.bannerText} tracking-wider text-black text-left`}
                                       style={{ border: '1px solid #000000' }}
                                     >
@@ -1094,11 +1185,11 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
 
                                   {/* 2. NOME */}
                                   <td 
-                                    className={`text-left font-bold px-1.5 ${rowMetrics.itemPy} border border-black uppercase ${rowMetrics.nameText} truncate max-w-[200px]`}
+                                    className={`text-left font-bold px-1.5 ${rowMetrics.itemPy} border border-black uppercase ${rowMetrics.nameText}`}
                                     style={{ border: '1px solid #000000' }}
                                     title={emp.nome}
                                   >
-                                    <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center justify-between gap-1 overflow-hidden">
                                       <span className="truncate">{emp.nome.toUpperCase()}</span>
                                       {isOutstation && (
                                         <span 
@@ -1150,6 +1241,18 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
                                   >
                                     {statusInfo.saida}
                                   </td>
+
+                                  {/* 7. PRODUÇÃO / DISPENSA (CABO/BANHO) */}
+                                  <td 
+                                    className={`text-center px-1 ${rowMetrics.itemPy} border border-black ${rowMetrics.statusText} font-bold ${
+                                      statusInfo.producaoDispensa ? 'text-black font-black' : ''
+                                    }`}
+                                    style={{ 
+                                      border: '1px solid #000000'
+                                    }}
+                                  >
+                                    {statusInfo.producaoDispensa || ''}
+                                  </td>
                                 </tr>
                               </React.Fragment>
                             );
@@ -1190,6 +1293,20 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              id="btn-portaria-exportar-csv-rodape"
+              onClick={handleExportCSV}
+              className={`px-3 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 border cursor-pointer ${
+                isDark 
+                  ? 'bg-[#16243D] text-slate-300 border-[#243756] hover:bg-[#1E3252]' 
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+              }`}
+              title="Exportar dados da folha em formato CSV / Planilha"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span className="hidden sm:inline">Exportar CSV</span>
+            </button>
             <button
               type="button"
               id="btn-portaria-fechar-rodape"
