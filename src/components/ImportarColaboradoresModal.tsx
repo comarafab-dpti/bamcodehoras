@@ -47,6 +47,7 @@ import {
 import {
   UNIDADES_ORGANIZACIONAIS,
   carregarUnidadesOrganizacionais,
+  listarUnidadesOrganizacionais,
 } from '../constants/unidadesOrganizacionais';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -151,7 +152,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
 
   // Lista de UOs cadastradas filtráveis para o dropdown
   const listaUosCadastradas = useMemo(() => {
-    const list = Object.values(UNIDADES_ORGANIZACIONAIS).filter(u => u.codigo !== 'NAO_CLASSIFICADO');
+    const list = listarUnidadesOrganizacionais();
     if (!filtroUoBusca.trim()) return list;
     const q = filtroUoBusca.toLowerCase().trim();
     return list.filter(u => 
@@ -161,11 +162,9 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
     );
   }, [filtroUoBusca, versaoUos]);
 
-  // Lista de UOs pai válidas (apenas SEDE, DACO ou DECO cadastradas)
+  // Qualquer OU ativa pode conter setores e também receber funcionários.
   const listaUosPaiDisponiveis = useMemo(() => {
-    return Object.values(UNIDADES_ORGANIZACIONAIS).filter(
-      u => u.codigo !== 'NAO_CLASSIFICADO' && (u.tipo === 'SEDE' || u.tipo === 'DACO' || u.tipo === 'DECO')
-    );
+    return listarUnidadesOrganizacionais();
   }, [versaoUos]);
 
   // Processa o arquivo selecionado
@@ -1109,7 +1108,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
                   <div>
                     <p className="text-xs font-bold">Opção B: Cadastrar como nova Unidade Organizacional (UO)</p>
                     <p className={`text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                      Crie um novo Setor subordinado a uma UO pai ou cadastre um novo DECO/DACO.
+                      Crie um novo Setor subordinado a qualquer OU. DECO/DACO são apenas categorias reconhecidas na importação.
                     </p>
                   </div>
                 </div>
@@ -1271,7 +1270,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
                                     : 'bg-white border-slate-300 text-slate-800'
                               }`}
                             >
-                              <option value="">-- Selecione a UO Pai (SEDE, DACO ou DECO) --</option>
+                              <option value="">-- Selecione a UO Pai --</option>
                               {listaUosPaiDisponiveis.map(uo => (
                                 <option key={uo.codigo} value={uo.codigo}>
                                   {uo.siglaExibicao} • {uo.nome} ({uo.tipo})
@@ -1280,7 +1279,7 @@ export const ImportarColaboradoresModal: React.FC<ImportarColaboradoresModalProp
                             </select>
                             {!novoSetorForm.pai && (
                               <p className="text-[10px] text-amber-400 mt-1">
-                                ⚠️ Obrigatório informar a qual UO pai (SEDE, DACO ou DECO) este setor pertence.
+                                ⚠️ Informe a OU à qual este setor pertence.
                               </p>
                             )}
                           </div>

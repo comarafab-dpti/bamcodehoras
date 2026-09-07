@@ -184,7 +184,7 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
     return employees
       .filter(emp => {
         // Filtro de Sede
-        if (filters.sede !== 'TODAS' && emp.sede !== filters.sede) return false;
+        if (filters.sede !== 'TODAS' && emp.sedeCodigo !== filters.sede) return false;
         // Filtro de Função
         if (filters.funcao !== 'TODAS' && emp.funcao !== filters.funcao) return false;
         // Filtro de Busca (Nome ou Matrícula)
@@ -375,7 +375,7 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
     };
 
     employees.forEach(emp => {
-      const s = emp.sede || 'KO';
+      const s = emp.sedeCodigo || 'Não informado';
       if (!map[s]) {
         map[s] = { sede: s, saldoHoras: 0, colaboradores: 0, atestados: 0, faltas: 0 };
       }
@@ -1291,13 +1291,13 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
                           {/* 3. SEDE: Badge da Sede (KO, BE, MN, etc.) - Centralizado */}
                           <td className="py-3.5 px-5 whitespace-nowrap text-center">
                             <span className={`px-2.5 py-1 border rounded-lg text-xs font-bold font-mono inline-block shadow-2xs ${
-                              emp.sede === 'KO' 
+                              emp.sedeCodigo === 'KO'
                                 ? isDark ? 'bg-blue-950/60 text-blue-300 border-blue-800/50' : 'bg-blue-50 text-blue-800 border-blue-200'
-                                : emp.sede === 'BE'
+                                : emp.sedeCodigo === 'BE'
                                 ? isDark ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/50' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : isDark ? 'bg-purple-950/60 text-purple-300 border-purple-800/50' : 'bg-purple-50 text-purple-800 border-purple-200'
                             }`}>
-                              {emp.sede || 'KO'}
+                              {emp.sedeCodigo || 'Não informado'}
                             </span>
                           </td>
 

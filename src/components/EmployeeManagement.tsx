@@ -52,6 +52,10 @@ import { PortariaAttendanceSheetModal } from './PortariaAttendanceSheetModal';
 import { EmployeeFormModal } from './EmployeeFormModal';
 import { ImportarColaboradoresModal } from './ImportarColaboradoresModal';
 import { DispensaSptfRecord } from '../types';
+import {
+  carregarUnidadesOrganizacionais,
+  listarUnidadesOrganizacionais,
+} from '../constants/unidadesOrganizacionais';
 
 interface EmployeeManagementProps {
   employees: Employee[];
@@ -110,13 +114,17 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
   const [filterSetor, setFilterSetor] = useState<string>('TODOS');
   const [filterStatus, setFilterStatus] = useState<string>('TODOS');
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>('TODOS');
+  const [versaoUos, setVersaoUos] = useState(0);
 
-  const availableSetores = useMemo(() => Array.from(new Set(
-    employees
-      .map((emp) => emp.lotacaoUoCodigo || '')
-      .map((value) => value.trim())
-      .filter(Boolean)
-  )).sort((a, b) => a.localeCompare(b, 'pt-BR')), [employees]);
+  useEffect(() => {
+    carregarUnidadesOrganizacionais()
+      .then(() => setVersaoUos((versao) => versao + 1))
+      .catch((error) => console.warn('[EmployeeManagement] Falha ao carregar UOs:', error));
+  }, []);
+
+  const availableSetores = useMemo(() => listarUnidadesOrganizacionais()
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+  [employees, versaoUos]);
   
   // 2. Estado de Ordenação Dinâmica
   const [sortOption, setSortOption] = useState<MobileSortOption>('nome_asc');
@@ -770,7 +778,11 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   }`}
                 >
                   <option value="TODOS">Todos os Setores / UOs</option>
-                  {availableSetores.map((setor) => <option key={setor} value={setor}>{setor}</option>)}
+                  {availableSetores.map((unidade) => (
+                    <option key={unidade.codigo} value={unidade.codigo}>
+                      {unidade.codigo} — {unidade.nome}
+                    </option>
+                  ))}
                 </select>
 
                 <select

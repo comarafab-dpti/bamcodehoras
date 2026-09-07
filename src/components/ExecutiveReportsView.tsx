@@ -211,7 +211,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
   const bancoHorasData = useMemo(() => {
     return employees
       .filter((emp) => {
-        if (selectedBranch !== 'TODAS' && (emp.sede_atual || emp.sede) !== selectedBranch) return false;
+        if (selectedBranch !== 'TODAS' && emp.sedeCodigo !== selectedBranch) return false;
         if (selectedStatus !== 'TODOS' && emp.status !== selectedStatus) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
@@ -263,7 +263,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
         return {
           matricula: emp.matricula,
           nome: emp.nome,
-          sede: emp.sede_atual || emp.sede,
+          sede: emp.sedeCodigo || 'Não informado',
           funcao: emp.funcao || emp.cargo || 'Operacional',
           status: emp.status,
           saldoAnterior,
@@ -340,7 +340,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
 
     return employees
       .filter((emp) => {
-        if (selectedBranch !== 'TODAS' && (emp.sede_atual || emp.sede) !== selectedBranch) return false;
+        if (selectedBranch !== 'TODAS' && emp.sedeCodigo !== selectedBranch) return false;
         if (selectedStatus !== 'TODOS' && emp.status !== selectedStatus) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
@@ -389,7 +389,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
         return {
           matricula: emp.matricula,
           nome: emp.nome,
-          sede: emp.sede_atual || emp.sede || 'KO',
+          sede: emp.sedeCodigo || 'Não informado',
           funcao: emp.funcao || emp.cargo || 'Operacional',
           totalDiasTrabalhados,
           totalApontamentos,
@@ -411,7 +411,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
 
     return employees
       .filter((emp) => {
-        if (selectedBranch !== 'TODAS' && (emp.sede_atual || emp.sede) !== selectedBranch) return false;
+        if (selectedBranch !== 'TODAS' && emp.sedeCodigo !== selectedBranch) return false;
         if (selectedStatus !== 'TODOS' && emp.status !== selectedStatus) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
@@ -453,7 +453,7 @@ export const ExecutiveReportsView: React.FC<ExecutiveReportsViewProps> = ({
         return {
           matricula: emp.matricula,
           nome: emp.nome,
-          sede: emp.sede_atual || emp.sede,
+          sede: emp.sedeCodigo || 'Não informado',
           funcao: emp.funcao || emp.cargo || 'Operacional',
           grauFixo: emp.grauInsalubridadeFixa || 'ISENTO',
           horas40,

@@ -144,6 +144,40 @@ export const UNIDADES_ORGANIZACIONAIS: Record<string, UnidadeOrganizacional> = {
 export const UNIDADES_ORGANIZACIONAIS_COLLECTION = 'unidades_organizacionais';
 let unidadesOrganizacionaisLoad: Promise<void> | null = null;
 
+/** Retorna somente UOs ativas cadastradas, sem incluir o marcador de pendência. */
+export function listarUnidadesOrganizacionais(): UnidadeOrganizacional[] {
+  return Object.values(UNIDADES_ORGANIZACIONAIS).filter(
+    (unidade) => unidade.ativa && unidade.codigo !== 'NAO_CLASSIFICADO'
+  );
+}
+
+/**
+ * Setor virtual para exibição quando a OU ainda não possui setores filhos.
+ * Ele não é persistido nem adicionado ao catálogo.
+ */
+export function obterSetorDefault(unidade: UnidadeOrganizacional): UnidadeOrganizacional {
+  return {
+    codigo: `${unidade.codigo}/GERAL`,
+    nome: unidade.nome,
+    siglaExibicao: `${unidade.siglaExibicao}/GERAL`,
+    tipo: 'SETOR',
+    sedeOuCanteiroPadrao: unidade.sedeOuCanteiroPadrao,
+    pai: unidade.codigo,
+    ativa: unidade.ativa,
+    descricao: 'Setor de exibição padrão da OU; não cadastrado separadamente.',
+  };
+}
+
+export function listarSetoresDaUnidade(codigoUo: string): UnidadeOrganizacional[] {
+  const setores = listarUnidadesOrganizacionais().filter(
+    (unidade) => unidade.tipo === 'SETOR' && unidade.pai === codigoUo
+  );
+  return setores.length > 0 ? setores : (() => {
+    const unidade = UNIDADES_ORGANIZACIONAIS[codigoUo];
+    return unidade ? [obterSetorDefault(unidade)] : [];
+  })();
+}
+
 /** Carrega UOs persistidas uma vez e as mescla ao catálogo estático. */
 export async function carregarUnidadesOrganizacionais(): Promise<void> {
   if (!unidadesOrganizacionaisLoad) {
@@ -277,6 +311,33 @@ function removerAcentos(texto: string): string {
   return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+/** Reconhece os padrões DECO-XX, DACO-XX e SEDE-XX usados pelos CSVs legados. */
+export function extrairBigramaDepartamento(valorBruto?: string | null): {
+  prefixo: 'DECO' | 'DACO' | 'SEDE';
+  bigrama: string;
+} | null {
+  if (!valorBruto) return null;
+  const valor = removerAcentos(valorBruto.trim().toUpperCase());
+  const match = valor.match(/^(DECO|DACO|SEDE)[\s_-]*([A-Z0-9]{2,})/);
+  return match ? { prefixo: match[1] as 'DECO' | 'DACO' | 'SEDE', bigrama: match[2] } : null;
+}
+
+function localizarUoPorPrefixoEBigrama(valorBruto: string): UnidadeOrganizacional | undefined {
+  const extraido = extrairBigramaDepartamento(valorBruto);
+  if (!extraido) return undefined;
+  const bigrama = extraido.bigrama;
+  const tipoEsperado = extraido.prefixo === 'SEDE' ? 'SEDE' : extraido.prefixo;
+  return listarUnidadesOrganizacionais().find((unidade) => {
+    const sigla = removerAcentos(unidade.siglaExibicao.toUpperCase()).replace(/[^A-Z0-9]/g, '');
+    const codigo = removerAcentos(unidade.codigo.toUpperCase()).replace(/[^A-Z0-9]/g, '');
+    return unidade.tipo === tipoEsperado && (
+      unidade.sedeOuCanteiroPadrao?.toUpperCase() === bigrama ||
+      sigla.endsWith(bigrama) ||
+      codigo.endsWith(bigrama)
+    );
+  });
+}
+
 /**
  * Normaliza o valor do campo departamento_nome extraído de planilhas e CSVs legados,
  * associando-o a uma Unidade Organizacional (UO) oficial da COMARA.
@@ -356,6 +417,16 @@ export function normalizarDepartamentoCSV(valorBruto?: string | null): Resultado
       codigoOriginal: valorBruto,
       unidade: UNIDADES_ORGANIZACIONAIS.DACO_MN,
       confianca: 'MEDIA',
+    };
+  }
+
+  // Prefixos são apenas padrões de reconhecimento da origem, não estruturas especiais.
+  const uoPorPrefixo = localizarUoPorPrefixoEBigrama(valorBruto);
+  if (uoPorPrefixo) {
+    return {
+      codigoOriginal: valorBruto,
+      unidade: uoPorPrefixo,
+      confianca: 'ALTA',
     };
   }
 

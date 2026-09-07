@@ -846,7 +846,7 @@ export const InsalubrityManagement: React.FC<InsalubrityManagementProps> = ({
                       <tr key={emp.id} className={isDark ? 'hover:bg-[#1B2D4A]' : 'hover:bg-slate-50'}>
                         <td className="p-3.5 font-mono font-bold">{emp.matricula}</td>
                         <td className="p-3.5 font-bold">{emp.nome}</td>
-                        <td className="p-3.5 font-mono">{emp.sede_atual || emp.sede}</td>
+                        <td className="p-3.5 font-mono">{emp.sedeCodigo || 'Não informado'}</td>
                         <td className="p-3.5">{emp.funcao || emp.cargo}</td>
                         <td className="p-3.5 text-center">
                           <span className={`px-2.5 py-1 rounded-full font-mono font-bold text-xs ${getGrauBadge(emp.grauInsalubridadeFixa || 'ISENTO')}`}>
@@ -1012,7 +1012,7 @@ export const InsalubrityManagement: React.FC<InsalubrityManagementProps> = ({
                   <option value="">-- Selecione o Colaborador por Matrícula / Nome --</option>
                   {employees.map((emp) => (
                     <option key={emp.id} value={emp.matricula}>
-                      {emp.matricula} - {emp.nome} ({emp.sede_atual || emp.sede} • {emp.funcao || emp.cargo})
+                      {emp.matricula} - {emp.nome} ({emp.sedeCodigo || 'Não informado'} • {emp.funcao || emp.cargo})
                     </option>
                   ))}
                 </select>

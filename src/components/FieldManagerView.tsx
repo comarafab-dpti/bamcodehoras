@@ -81,7 +81,7 @@ export const FieldManagerView: React.FC<FieldManagerViewProps> = ({
   const filteredEmployees = useMemo(() => {
     return employeesWithData.filter((emp) => {
       // Sede filter
-      if (sedeFilter !== 'TODAS' && emp.sede !== sedeFilter && emp.sede_atual !== sedeFilter) {
+      if (sedeFilter !== 'TODAS' && emp.sedeCodigo !== sedeFilter) {
         return false;
       }
 
@@ -378,7 +378,7 @@ export const FieldManagerView: React.FC<FieldManagerViewProps> = ({
                       <div className={`text-xs truncate flex items-center gap-2 mt-0.5 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
                         <span>{emp.funcao || emp.cargo || 'Operador'}</span>
                         <span>•</span>
-                        <span>Sede {emp.sede_atual || emp.sede}</span>
+                        <span>Sede {emp.sedeCodigo || 'Não informado'}</span>
                       </div>
                     </div>
                   </div>

@@ -512,8 +512,8 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
     const selectedSedeUpper = selectedSede.toUpperCase();
 
     const filtered = employees.filter((emp) => {
-      const sedeAtual = (emp.sede_atual || emp.sede || '').toUpperCase();
-      const sedeFixa = (emp.sede_origem || emp.sede || '').toUpperCase();
+      const sedeAtual = (emp.sedeCodigo || '').toUpperCase();
+      const sedeFixa = sedeAtual;
 
       // Filtro de Canteiro / Sede
       if (selectedSedeUpper !== 'TODAS') {
@@ -544,12 +544,10 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
 
     // Mapeia e classifica: Efetivo Fixo (Local) vs Em Missão/Serviço Fora de Sede
     const mapped = filtered.map((emp) => {
-      const sedeAtual = (emp.sede_atual || emp.sede || '').toUpperCase();
-      const sedeFixa = (emp.sede_origem || emp.sede || '').toUpperCase();
+      const sedeAtual = (emp.sedeCodigo || '').toUpperCase();
+      const sedeFixa = sedeAtual;
 
-      const isOutstation = selectedSedeUpper !== 'TODAS'
-        ? (sedeFixa !== selectedSedeUpper && sedeAtual === selectedSedeUpper)
-        : (Boolean(emp.sede_atual) && emp.sede_atual !== (emp.sede_origem || emp.sede));
+      const isOutstation = Boolean(emp.canteiroExecucaoId);
 
       const statusInfo = checkEmployeeStatusForDate(emp, selectedDate);
 

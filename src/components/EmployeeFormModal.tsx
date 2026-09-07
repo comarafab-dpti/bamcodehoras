@@ -18,7 +18,10 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { Branch, ConstructionSite, Employee, EmployeeStatus } from '../types';
-import { UNIDADES_ORGANIZACIONAIS } from '../constants/unidadesOrganizacionais';
+import {
+  carregarUnidadesOrganizacionais,
+  listarUnidadesOrganizacionais,
+} from '../constants/unidadesOrganizacionais';
 import { firestoreService } from '../services/firestoreService';
 import { authService } from '../services/authService';
 
@@ -96,6 +99,12 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   const [uoExecucaoCodigo, setUoExecucaoCodigo] = useState('');
   const [canteiroExecucaoId, setCanteiroExecucaoId] = useState('');
   const [departamentoOriginal, setDepartamentoOriginal] = useState('');
+
+  useEffect(() => {
+    carregarUnidadesOrganizacionais().catch((error) => {
+      console.warn('[EmployeeFormModal] Falha ao carregar UOs:', error);
+    });
+  }, []);
   const [isAlocadoTemporario, setIsAlocadoTemporario] = useState(false);
   const [dataInicioAlocacao, setDataInicioAlocacao] = useState('');
   const [dataFimAlocacao, setDataFimAlocacao] = useState('');
@@ -520,7 +529,7 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   >
                     <option value="">Não informado</option>
                     {Array.from(new Set([
-                      ...Object.values(UNIDADES_ORGANIZACIONAIS).map((uo) => uo.sedeOuCanteiroPadrao || ''),
+                      ...listarUnidadesOrganizacionais().map((uo) => uo.sedeOuCanteiroPadrao || ''),
                       ...constructionSites.map((site) => (site.branch || site.sede || '').toUpperCase()),
                     ].filter(Boolean))).map((codigo) => (
                       <option key={codigo} value={codigo}>{codigo}</option>
@@ -531,21 +540,27 @@ export const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>Lotação (UO)</label>
+                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>
+                    Lotação (UO) <InfoTooltip content="OU administrativa à qual o funcionário está vinculado." theme={theme} />
+                  </label>
                   <select value={lotacaoUoCodigo} onChange={(e) => setLotacaoUoCodigo(e.target.value)} className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden cursor-pointer ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'}`}>
                     <option value="">Não informado</option>
-                    {Object.values(UNIDADES_ORGANIZACIONAIS).map((uo) => <option key={uo.codigo} value={uo.codigo}>{uo.codigo} — {uo.nome}</option>)}
+                    {listarUnidadesOrganizacionais().map((uo) => <option key={uo.codigo} value={uo.codigo}>{uo.codigo} — {uo.nome}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>UO de Execução</label>
+                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>
+                    UO de Execução <InfoTooltip content="OU onde o trabalho é executado; pode ser diferente da lotação." theme={theme} />
+                  </label>
                   <select value={uoExecucaoCodigo} onChange={(e) => setUoExecucaoCodigo(e.target.value)} className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden cursor-pointer ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'}`}>
                     <option value="">Não informado</option>
-                    {Object.values(UNIDADES_ORGANIZACIONAIS).map((uo) => <option key={uo.codigo} value={uo.codigo}>{uo.codigo} — {uo.nome}</option>)}
+                    {listarUnidadesOrganizacionais().map((uo) => <option key={uo.codigo} value={uo.codigo}>{uo.codigo} — {uo.nome}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>Departamento Original</label>
+                  <label className={`block font-semibold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-700'}`}>
+                    Departamento Original <InfoTooltip content="Valor bruto recebido do sistema de origem, preservado para rastreabilidade." theme={theme} />
+                  </label>
                   <input type="text" value={departamentoOriginal} onChange={(e) => setDepartamentoOriginal(e.target.value)} readOnly={Boolean(employee?.departamentoOriginal)} placeholder="Não informado" className={`w-full px-3 py-2 rounded-lg border focus:outline-hidden ${isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-300 text-slate-900'} ${employee?.departamentoOriginal ? 'opacity-70 cursor-not-allowed' : ''}`} />
                 </div>
               </div>

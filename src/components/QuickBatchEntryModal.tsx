@@ -148,8 +148,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
   const availableSedes = useMemo(() => {
     const s = new Set<string>();
     safeEmployees.forEach((e) => {
-      if (e.sede) s.add(e.sede);
-      if (e.sede_atual) s.add(e.sede_atual);
+      if (e.sedeCodigo) s.add(e.sedeCodigo);
     });
     return Array.from(s).sort();
   }, [safeEmployees]);
@@ -165,7 +164,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
   // Lista filtrada para multi-seleção
   const filteredEmployeesForSelection = useMemo(() => {
     return safeEmployees.filter((emp) => {
-      const empSede = emp.sede_atual || emp.sede || 'KO';
+      const empSede = emp.sedeCodigo || '';
       const empFuncao = emp.funcao || 'Operacional';
       const empNome = emp.nome || '';
       const empMat = emp.matricula || '';
@@ -192,7 +191,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
         matricula: mat,
         nome: emp.nome || 'Sem Nome',
         funcao: emp.funcao || 'Operacional',
-        sede: emp.sede_atual || emp.sede || 'KO',
+        sede: emp.sedeCodigo || '',
         tipo: existing?.tipo || tipoOcorrencia,
         horas: existing !== undefined ? existing.horas : (tipoOcorrencia === 'FALTA_INJUSTIFICADA' ? 8.0 : horasBrutas),
         incluir: existing !== undefined ? existing.incluir : true,
@@ -325,7 +324,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
       : `Lote RH (${tipoOcorrencia} em ${dataRegistro})`;
 
     for (const emp of selectedEmployeeObjects) {
-      const effectiveSede: Branch = emp.sede_atual || emp.sede || 'KO';
+      const effectiveSede: Branch = emp.sedeCodigo || '';
       const calc = calculateSPTFBalance(
         tipoOcorrencia,
         tipoOcorrencia === 'FALTA_INJUSTIFICADA' ? 8.0 : (tipoOcorrencia === 'ACABOU_BANHOU' ? 0.0 : horasBrutas),
@@ -466,7 +465,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
       return;
     }
 
-    const effectiveSede: Branch = emp.sede_atual || emp.sede || 'KO';
+    const effectiveSede: Branch = emp.sedeCodigo || '';
     const isAcabouBanhou = tipoOcorrencia === 'ACABOU_BANHOU';
     const calc = calculateSPTFBalance(
       tipoOcorrencia,
@@ -948,7 +947,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
                             <span className={`px-2 py-0.5 rounded ${
                               isDark ? 'bg-[#16243D] text-slate-300 border border-[#335075]' : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}>
-                              Canteiro: {emp.sede_atual || emp.sede || 'KO'}
+                              Canteiro: {emp.canteiroExecucaoId || emp.sedeCodigo || 'Não informado'}
                             </span>
                           </div>
                         </label>
@@ -1327,7 +1326,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
                             </div>
                           </div>
                           <span className="px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-400 text-[10px] font-mono">
-                            {emp.sede_atual || emp.sede || 'KO'}
+                            {emp.canteiroExecucaoId || emp.sedeCodigo || 'Não informado'}
                           </span>
                         </button>
                       );
@@ -1363,7 +1362,7 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
                           <span className="text-slate-400">{selectedEmployee.funcao || 'Operacional'}</span>
                           <span className="text-slate-400">•</span>
                           <span className="px-1 rounded bg-blue-500/10 text-blue-400">
-                            Canteiro: {selectedEmployee.sede_atual || selectedEmployee.sede || 'KO'}
+                            Canteiro: {selectedEmployee.canteiroExecucaoId || selectedEmployee.sedeCodigo || 'Não informado'}
                           </span>
                         </div>
                       </div>

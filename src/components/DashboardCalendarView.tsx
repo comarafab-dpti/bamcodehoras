@@ -223,7 +223,7 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
   // Filtered employees (respeita busca, sede, função e dia selecionado no cabeçalho)
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
-      if (filterSede !== 'TODAS' && (emp.sede_atual || emp.sede) !== filterSede) return false;
+      if (filterSede !== 'TODAS' && emp.sedeCodigo !== filterSede) return false;
       if (filterFuncao !== 'TODAS' && emp.funcao !== filterFuncao) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -857,7 +857,7 @@ export const DashboardCalendarView: React.FC<DashboardCalendarViewProps> = ({
                               {emp.nome}
                             </button>
                             <span className="text-[10px] font-mono text-gray-400 dark:text-gray-500 block truncate leading-tight mt-0.5">
-                              #{emp.matricula} • {emp.sede_atual || emp.sede || 'KO'} • {emp.funcao || emp.cargo || 'Serviço Geral'}
+                              #{emp.matricula} • {emp.sedeCodigo || 'Não informado'} • {emp.funcao || emp.cargo || 'Serviço Geral'}
                             </span>
                           </div>
                         </div>

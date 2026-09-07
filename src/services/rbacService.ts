@@ -383,10 +383,8 @@ export const rbacService = {
     if (this.hasGlobalAccess(user.role)) return true;
     
     const userCanteiro = this.getUserCanteiroId(user);
-    const empSede = (employee.sede_atual || employee.sede || '').toUpperCase();
-    const empOrigem = (employee.sede_origem || '').toUpperCase();
-    
-    return empSede === userCanteiro || empOrigem === userCanteiro;
+    const empSede = (employee.sedeCodigo || '').toUpperCase();
+    return empSede === userCanteiro;
   },
 
   /**
@@ -398,9 +396,8 @@ export const rbacService = {
 
     const userCanteiro = this.getUserCanteiroId(user);
     return employees.filter((emp) => {
-      const empSede = (emp.sede_atual || emp.sede || '').toUpperCase();
-      const empOrigem = (emp.sede_origem || '').toUpperCase();
-      return empSede === userCanteiro || empOrigem === userCanteiro;
+      const empSede = (emp.sedeCodigo || '').toUpperCase();
+      return empSede === userCanteiro;
     });
   },
 
@@ -416,9 +413,8 @@ export const rbacService = {
     // Mapeia matrículas que pertencem ao canteiro do usuário
     const allowedMatriculas = new Set<string>();
     employees.forEach((emp) => {
-      const empSede = (emp.sede_atual || emp.sede || '').toUpperCase();
-      const empOrigem = (emp.sede_origem || '').toUpperCase();
-      if (empSede === userCanteiro || empOrigem === userCanteiro) {
+      const empSede = (emp.sedeCodigo || '').toUpperCase();
+      if (empSede === userCanteiro) {
         allowedMatriculas.add(emp.matricula.trim().toUpperCase());
       }
     });
@@ -455,7 +451,7 @@ export const rbacService = {
     
     const allowedMatriculas = new Set<string>();
     employees.forEach((emp) => {
-      const empSede = (emp.sede_atual || emp.sede || '').toUpperCase();
+      const empSede = (emp.sedeCodigo || '').toUpperCase();
       if (empSede === userCanteiro) {
         allowedMatriculas.add(emp.matricula.trim().toUpperCase());
       }

@@ -19,3 +19,16 @@
 - **Base components:** `src/components/ui/` — `Button` (6 variants × 4 sizes, loading state), `Card`/`CardHeader`/`CardBody`, `Input` (label, icon, error, hint), `Badge` (6 semantic variants). All consume CSS variables for theme-awareness.
 - **Consistency:** All inputs have `focus:ring-2` focus rings. Primary buttons use `shadow-lg shadow-blue-600/20` + `active:scale-[0.98]` tactile feedback. All buttons with `cursor-pointer` + `transition-*` have `active:scale-[0.98]`.
 - **To add a new screen:** prefer importing from `src/components/ui/` for buttons, cards, inputs, badges. Use CSS variables (`var(--surface-card)`, etc.) for theme-aware colors.
+
+## Modelo organizacional simplificado
+
+- **OM:** a organização institucional da COMARA, que contém suas unidades.
+- **OU:** qualquer Unidade Organizacional cadastrada em `unidades_organizacionais`, com código, nome, sigla, tipo de compatibilidade, sede/canteiro padrão, descrição e status ativo. A OU SEDE é pré-cadastrada.
+- **Setor:** unidade filha de uma OU, indicada pelo campo `pai`. Uma OU pode ter nenhum, um ou vários setores. Quando não houver setor cadastrado, a interface usa virtualmente `<codigo-da-ou>/GERAL`, sem criar documento ou opção fantasma no banco.
+- **Lotação:** OU administrativa do funcionário (`lotacaoUoCodigo`). Qualquer OU pode receber funcionários.
+- **UO de execução:** OU onde o trabalho é realizado (`uoExecucaoCodigo`), podendo ser diferente da lotação.
+- **Canteiro:** local territorial/operacional legado, mantido quando aplicável por `sedeCodigo` e `canteiroExecucaoId`.
+- **Departamento original:** valor bruto do CSV, preservado em `departamentoOriginal` para rastreabilidade.
+- **DECO/DACO/SEDE:** padrões de reconhecimento na importação (`DECO-<bigrama>`, `DACO-<bigrama>`, `SEDE-<bigrama>`). Não são estruturas especiais; o bigrama apenas localiza a OU cadastrada.
+- Filtros e formulários usam as UOs ativas carregadas da coleção `unidades_organizacionais`; regras de segurança e o deploy manual do Firestore permanecem inalterados.
+- O pipeline oficial de colaboradores é `importacaoColaboradores.ts` + `classificacaoInterativa.ts`; módulos históricos de sincronização não devem ser usados em novas integrações.

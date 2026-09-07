@@ -62,7 +62,29 @@ export function sanitizeFirestoreData<T extends Record<string, any>>(data: T): R
   return clean;
 }
 
-// Higienizador robusto com valores padrão garantidos para Colaboradores
+/** Converte um documento Firestore sem inferir campos canônicos a partir dos legados. */
+export function mapEmployeeDocument(data: Record<string, any>, id: string): Employee {
+  return {
+    ...data,
+    id,
+    matricula: data.matricula || id,
+    nome: data.nome || '',
+    funcao: data.funcao || data.cargo || 'Técnico de Manutenção',
+    cargo: data.cargo || data.funcao,
+    sede: data.sede as Employee['sede'],
+    sede_origem: data.sede_origem,
+    sede_atual: data.sede_atual,
+    sedeCodigo: data.sedeCodigo,
+    lotacaoUoCodigo: data.lotacaoUoCodigo,
+    uoExecucaoCodigo: data.uoExecucaoCodigo,
+    canteiroExecucaoId: data.canteiroExecucaoId,
+    departamentoOriginal: data.departamentoOriginal,
+    dataAdmissao: data.dataAdmissao || '2026-01-01',
+    status: data.status || 'Ativo',
+  };
+}
+
+// Higienizador robusto para Colaboradores. Campos legados só são mantidos quando informados.
 export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<string, any> {
   const cleanMatricula = (emp.matricula || emp.id || '').trim().toUpperCase();
   const hasSenhaInicial = Boolean(emp.senhaInicial && emp.senhaInicial.trim().length >= 4);
@@ -75,15 +97,15 @@ export function prepareEmployeeForFirestore(emp: Partial<Employee>): Record<stri
     nome: (emp.nome || '').trim(),
     funcao: emp.funcao || emp.cargo || 'Técnico de Manutenção',
     cargo: emp.cargo || emp.funcao || 'Técnico de Manutenção',
-    sede: emp.sede || 'KO',
-    sede_origem: emp.sede_origem || emp.sede || 'KO',
-    sede_atual: emp.sede_atual || emp.sede || 'KO',
+    sede: emp.sede,
+    sede_origem: emp.sede_origem,
+    sede_atual: emp.sede_atual,
     ...prepararCamposCanonicosParaFirestore(emp),
-    lotacao: emp.lotacao || emp.secaoLotacao || emp.sede_atual || emp.sede || '',
-    secaoLotacao: emp.secaoLotacao || emp.lotacao || '',
-    uoExecucao: emp.uoExecucao || emp.lotacao || '',
-    departamento: emp.departamento || emp.lotacao || '',
-    canteiroId: emp.canteiroId || '',
+    lotacao: emp.lotacao,
+    secaoLotacao: emp.secaoLotacao,
+    uoExecucao: emp.uoExecucao,
+    departamento: emp.departamento,
+    canteiroId: emp.canteiroId,
     cpf: emp.cpf || '',
     cpfHash: emp.cpfHash || '',
     cpfMascarado: emp.cpfMascarado || (emp.cpf ? maskCPF(emp.cpf) : ''),
@@ -214,8 +236,7 @@ export const firestoreService = {
     try {
       let q = query(collection(db, path), orderBy('nome', 'asc'), limit(1000));
       if (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') {
-        // Query com filtro no Firestore quando aplicável
-        q = query(collection(db, path), where('sede', '==', canteiroId), orderBy('nome', 'asc'), limit(1000));
+        q = query(collection(db, path), where('sedeCodigo', '==', canteiroId), orderBy('nome', 'asc'), limit(1000));
       }
       return onSnapshot(
         q,
@@ -224,45 +245,14 @@ export const firestoreService = {
             const list: Employee[] = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data();
-              const empSede = data.sede || data.sede_atual || 'KO';
-              
               // Filtro defensivo de segurança no cliente
               if (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') {
                 const normalizedCanteiro = canteiroId.toUpperCase();
-                const match = (data.sede || '').toUpperCase() === normalizedCanteiro ||
-                              (data.sede_atual || '').toUpperCase() === normalizedCanteiro ||
-                              (data.sede_origem || '').toUpperCase() === normalizedCanteiro ||
-                              (data.canteiroId || '').toUpperCase() === normalizedCanteiro;
+                const match = (data.sedeCodigo || '').toUpperCase() === normalizedCanteiro;
                 if (!match) return;
               }
 
-              list.push({
-                id: docSnap.id,
-                matricula: data.matricula || docSnap.id,
-                nome: data.nome || '',
-                funcao: data.funcao || data.cargo || 'Técnico de Manutenção',
-                cargo: data.cargo || data.funcao,
-                sede: empSede,
-                sede_origem: data.sede_origem || data.sede || 'KO',
-                sede_atual: data.sede_atual || data.sede || 'KO',
-                dataAdmissao: data.dataAdmissao || '2026-01-01',
-                status: data.status || 'Ativo',
-                grauInsalubridadeFixa: data.grauInsalubridadeFixa || 'ISENTO',
-                saldoInicialHoras: typeof data.saldoInicialHoras === 'number' ? data.saldoInicialHoras : 0,
-                primeiroAcesso: typeof data.primeiroAcesso === 'boolean' ? data.primeiroAcesso : undefined,
-                senhaCadastrada: typeof data.senhaCadastrada === 'boolean' ? data.senhaCadastrada : undefined,
-                telefone: data.telefone,
-                email: data.email,
-                horarioTrabalho: data.horarioTrabalho,
-                url_foto_perfil: data.url_foto_perfil || data.avatarUrl,
-                avatarUrl: data.avatarUrl || data.url_foto_perfil,
-                id_drive_foto: data.id_drive_foto,
-                data_inicio_status: data.data_inicio_status,
-                data_fim_status: data.data_fim_status,
-                observacao_status: data.observacao_status,
-                criadoEm: data.criadoEm,
-                atualizadoEm: data.atualizadoEm,
-              });
+              list.push(mapEmployeeDocument(data, docSnap.id));
             });
             onSuccess(list);
           } catch (err: any) {

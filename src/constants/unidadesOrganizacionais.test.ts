@@ -4,7 +4,10 @@
  */
 
 import {
+  extrairBigramaDepartamento,
   normalizarDepartamentoCSV,
+  obterSetorDefault,
+  registrarNovaUOEmMemoria,
   UNIDADES_ORGANIZACIONAIS,
 } from './unidadesOrganizacionais';
 
@@ -171,6 +174,37 @@ assert(
   resDeptPadraoAbreviado.unidade.codigo === 'NAO_CLASSIFICADO',
   "'Dept. padrão' normaliza para NAO_CLASSIFICADO",
   `Recebido: ${resDeptPadraoAbreviado.unidade.codigo}`
+);
+
+const bigramaDaco = extrairBigramaDepartamento('DACO-XR');
+assert(
+  bigramaDaco?.prefixo === 'DACO' && bigramaDaco.bigrama === 'XR',
+  'Extrai prefixo e bigrama de DACO-XR'
+);
+
+const uoCadastrada = {
+  codigo: 'OU_XR',
+  nome: 'Unidade Experimental XR',
+  siglaExibicao: 'OU-XR',
+  tipo: 'DACO' as const,
+  sedeOuCanteiroPadrao: 'XR',
+  ativa: true,
+};
+registrarNovaUOEmMemoria(uoCadastrada);
+const resUoDinamica = normalizarDepartamentoCSV('DACO-XR');
+assert(
+  resUoDinamica.unidade.codigo === 'OU_XR',
+  'Prefixo DACO localiza uma OU cadastrada pelo código territorial'
+);
+
+const setorDefault = obterSetorDefault(UNIDADES_ORGANIZACIONAIS.SEDE_BE);
+assert(
+  setorDefault.codigo === 'SEDE_BE/GERAL' && setorDefault.pai === 'SEDE_BE',
+  'OU sem setores recebe setor default virtual sem alterar o catálogo'
+);
+assert(
+  !UNIDADES_ORGANIZACIONAIS[setorDefault.codigo],
+  'Setor default não é persistido no catálogo'
 );
 
 console.log('\n=============================================================');

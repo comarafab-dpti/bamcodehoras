@@ -465,13 +465,13 @@ export const SiteSupervisorMobileView: React.FC<SiteSupervisorMobileViewProps> =
                           {emp.matricula}
                         </span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
-                          emp.sede_atual && emp.sede_atual !== emp.sede
+                          emp.sedeCodigo
                             ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                             : isDark
                             ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                             : 'bg-blue-50 text-blue-700 border border-blue-200'
                         }`}>
-                          {emp.sede_atual ? `${emp.sede_atual} (Alocado)` : emp.sede || 'KO'}
+                          {emp.sedeCodigo || 'Não informado'}
                         </span>
                       </div>
 

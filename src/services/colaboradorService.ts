@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db, logFirestoreError, OperationType } from './firebase';
 import { Employee } from '../types';
-import { firestoreService, prepareEmployeeForFirestore, sanitizeFirestoreData, COLLECTIONS, BatchProgressInfo } from './firestoreService';
+import { firestoreService, mapEmployeeDocument, prepareEmployeeForFirestore, sanitizeFirestoreData, COLLECTIONS, BatchProgressInfo } from './firestoreService';
 import { hashPassword } from './authService';
 
 export const colaboradorService = {
@@ -33,33 +33,7 @@ export const colaboradorService = {
             const list: Employee[] = [];
             snapshot.forEach((docSnap) => {
               const data = docSnap.data();
-              list.push({
-                id: docSnap.id,
-                matricula: data.matricula || docSnap.id,
-                nome: data.nome || '',
-                funcao: data.funcao || data.cargo || 'Técnico de Manutenção',
-                cargo: data.cargo || data.funcao,
-                sede: data.sede || 'KO',
-                sede_origem: data.sede_origem || data.sede || 'KO',
-                sede_atual: data.sede_atual || data.sede || 'KO',
-                dataAdmissao: data.dataAdmissao || '2026-01-01',
-                status: data.status || 'Ativo',
-                grauInsalubridadeFixa: data.grauInsalubridadeFixa || 'ISENTO',
-                saldoInicialHoras: typeof data.saldoInicialHoras === 'number' ? data.saldoInicialHoras : 0,
-                primeiroAcesso: typeof data.primeiroAcesso === 'boolean' ? data.primeiroAcesso : undefined,
-                senhaCadastrada: typeof data.senhaCadastrada === 'boolean' ? data.senhaCadastrada : undefined,
-                telefone: data.telefone,
-                email: data.email,
-                horarioTrabalho: data.horarioTrabalho,
-                url_foto_perfil: data.url_foto_perfil || data.avatarUrl,
-                avatarUrl: data.avatarUrl || data.url_foto_perfil,
-                id_drive_foto: data.id_drive_foto,
-                data_inicio_status: data.data_inicio_status,
-                data_fim_status: data.data_fim_status,
-                observacao_status: data.observacao_status,
-                criadoEm: data.criadoEm,
-                atualizadoEm: data.atualizadoEm,
-              });
+              list.push(mapEmployeeDocument(data, docSnap.id));
             });
             onSuccess(list);
           } catch (err: any) {
@@ -90,33 +64,7 @@ export const colaboradorService = {
       const list: Employee[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        list.push({
-          id: docSnap.id,
-          matricula: data.matricula || docSnap.id,
-          nome: data.nome || '',
-          funcao: data.funcao || data.cargo || 'Técnico de Manutenção',
-          cargo: data.cargo || data.funcao,
-          sede: data.sede || 'KO',
-          sede_origem: data.sede_origem || data.sede || 'KO',
-          sede_atual: data.sede_atual || data.sede || 'KO',
-          dataAdmissao: data.dataAdmissao || '2026-01-01',
-          status: data.status || 'Ativo',
-          grauInsalubridadeFixa: data.grauInsalubridadeFixa || 'ISENTO',
-          saldoInicialHoras: typeof data.saldoInicialHoras === 'number' ? data.saldoInicialHoras : 0,
-          primeiroAcesso: typeof data.primeiroAcesso === 'boolean' ? data.primeiroAcesso : undefined,
-          senhaCadastrada: typeof data.senhaCadastrada === 'boolean' ? data.senhaCadastrada : undefined,
-          telefone: data.telefone,
-          email: data.email,
-          horarioTrabalho: data.horarioTrabalho,
-          url_foto_perfil: data.url_foto_perfil || data.avatarUrl,
-          avatarUrl: data.avatarUrl || data.url_foto_perfil,
-          id_drive_foto: data.id_drive_foto,
-          data_inicio_status: data.data_inicio_status,
-          data_fim_status: data.data_fim_status,
-          observacao_status: data.observacao_status,
-          criadoEm: data.criadoEm,
-          atualizadoEm: data.atualizadoEm,
-        });
+        list.push(mapEmployeeDocument(data, docSnap.id));
       });
       return list;
     } catch (error) {
