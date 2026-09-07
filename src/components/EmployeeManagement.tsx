@@ -71,7 +71,7 @@ interface EmployeeManagementProps {
 }
 
 export type BalanceFilter = 'TODOS' | 'CREDOR' | 'DEVEDOR' | 'ZERADO';
-export type SortKey = 'nome' | 'saldo' | 'matricula' | 'funcao' | 'sede' | 'lotacao' | 'localTrabalho' | 'setor' | 'dataAdmissao' | 'status' | 'statusBanco';
+export type SortKey = 'nome' | 'saldo' | 'matricula' | 'funcao' | 'sede' | 'lotacao' | 'localTrabalho' | 'setor' | 'status' | 'statusBanco';
 export type MobileSortOption = 'nome_asc' | 'nome_desc' | 'saldo_asc' | 'saldo_desc';
 
 export interface SortConfig {
@@ -251,9 +251,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
             break;
           case 'setor':
             comparison = a.org.setorFormatado.localeCompare(b.org.setorFormatado, 'pt-BR');
-            break;
-          case 'dataAdmissao':
-            comparison = (a.emp.dataAdmissao || '').localeCompare(b.emp.dataAdmissao || '');
             break;
           case 'status':
             comparison = (a.emp.status || '').localeCompare(b.emp.status || '');
@@ -957,19 +954,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </th>
 
-                    {/* 7. Data Admissão */}
-                    <th 
-                      onClick={() => handleSort('dataAdmissao')}
-                      className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
-                      title="Clique para ordenar por Data de Admissão"
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Data Admissão</span>
-                        {renderSortIcon('dataAdmissao')}
-                      </div>
-                    </th>
-
-                    {/* 8. Status Contratual */}
+                    {/* 7. Status Contratual */}
                     <th 
                       onClick={() => handleSort('status')}
                       className="py-3 px-4 cursor-pointer group hover:text-blue-400 transition-colors active:scale-[0.98]"
@@ -1013,7 +998,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 }`}>
                   {filteredAndSortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                      <td colSpan={10} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                         <div className="flex flex-col items-center justify-center gap-2">
                           <AlertCircle className="w-6 h-6 text-gray-500" />
                           <p className="font-semibold text-sm">Nenhum colaborador localizado com os filtros selecionados.</p>
@@ -1131,9 +1116,6 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                                 —
                               </span>
                             )}
-                          </td>
-                          <td className={`py-3.5 px-4 whitespace-nowrap ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                            {emp.dataAdmissao}
                           </td>
                           <td className="py-3.5 px-4 whitespace-nowrap">
                             <div className="flex flex-col gap-1 items-start">
