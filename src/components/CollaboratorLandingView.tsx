@@ -267,7 +267,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
       {/* ------------------------------------------------------------- */}
       {/* CABEÇALHO COMPACTO COM BOTÃO DISCRETO DE ACESSO GESTÃO RH    */}
       {/* ------------------------------------------------------------- */}
-      <header className={`flex py-2.5 sm:py-3.5 px-3 sm:px-8 border-b items-center justify-between transition-all ${
+      <header className={`hidden sm:flex py-2.5 sm:py-3.5 px-4 sm:px-8 border-b items-center justify-between transition-all ${
         isDark ? 'bg-[#11203A] border-[#233654]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         <div className="flex items-center space-x-2.5 sm:space-x-3">
@@ -322,6 +322,12 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
           </button>
         </div>
       </header>
+
+      <div className={`sm:hidden flex justify-end px-3 py-2 border-b ${
+        isDark ? 'bg-[#11203A] border-[#233654]' : 'bg-white border-slate-200'
+      }`}>
+        <PWAInstallButton variant="navbar" theme={theme} />
+      </div>
 
       {/* ------------------------------------------------------------- */}
       {/* CONTEÚDO PRINCIPAL CENTRALIZADO */}
