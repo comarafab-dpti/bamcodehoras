@@ -10,12 +10,19 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CompetenciaControle } from '../services/competenciaService';
-import { MONTH_NAMES_FULL, getCompetenciaAnterior, getProximaCompetencia } from '../services/competenciaEngine';
+import { 
+  MONTH_NAMES_FULL, 
+  getCompetenciaAnterior, 
+  getProximaCompetencia,
+  calcularCorCompetencia 
+} from '../services/competenciaEngine';
 import { Badge, Button } from './ui';
 
 interface CompetenciaStatusBarProps {
   competencia: string; // "YYYY-MM"
   controle: CompetenciaControle | null;
+  controleAnterior?: CompetenciaControle | null;
+  todasCompetencias?: CompetenciaControle[];
   onSelectCompetencia: (comp: string) => void;
   onOpenManagementModal: () => void;
   isGlobalAdmin: boolean;
@@ -25,6 +32,8 @@ interface CompetenciaStatusBarProps {
 export const CompetenciaStatusBar: React.FC<CompetenciaStatusBarProps> = ({
   competencia,
   controle,
+  controleAnterior,
+  todasCompetencias = [],
   onSelectCompetencia,
   onOpenManagementModal,
   isGlobalAdmin,
@@ -32,6 +41,13 @@ export const CompetenciaStatusBar: React.FC<CompetenciaStatusBarProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const status = controle?.status || 'ABERTO';
+
+  const estadoCor = calcularCorCompetencia({
+    competenciaAtual: competencia,
+    statusCompetenciaAtual: status,
+    statusCompetenciaAnterior: controleAnterior?.status,
+    mesesControle: todasCompetencias,
+  });
 
   const [anoStr, mesStr] = competencia.split('-');
   const mesIndex = parseInt(mesStr, 10) - 1;
@@ -44,11 +60,11 @@ export const CompetenciaStatusBar: React.FC<CompetenciaStatusBarProps> = ({
     <div
       id="competencia-status-bar"
       className={`rounded-xl border transition-all ${
-        status === 'FECHADO'
+        estadoCor.cor === 'VERMELHO'
           ? isDark
             ? 'bg-[#16243D]/90 border-rose-900/40 shadow-sm'
             : 'bg-rose-50/70 border-rose-200 shadow-sm'
-          : status === 'REABERTO'
+          : estadoCor.cor === 'AMARELO'
           ? isDark
             ? 'bg-[#16243D]/90 border-amber-900/40 shadow-sm'
             : 'bg-amber-50/70 border-amber-200 shadow-sm'
@@ -87,20 +103,20 @@ export const CompetenciaStatusBar: React.FC<CompetenciaStatusBarProps> = ({
           {/* Badge de Status da Competência */}
           <Badge
             variant={
-              status === 'FECHADO'
+              estadoCor.cor === 'VERMELHO'
                 ? 'danger'
-                : status === 'REABERTO'
+                : estadoCor.cor === 'AMARELO'
                 ? 'warning'
                 : 'success'
             }
           >
-            {status === 'FECHADO' ? (
+            {estadoCor.cor === 'VERMELHO' ? (
               <span className="flex items-center gap-1">
                 <Lock className="w-3 h-3" /> MÊS HOMOLOGADO / FECHADO
               </span>
-            ) : status === 'REABERTO' ? (
+            ) : estadoCor.cor === 'AMARELO' ? (
               <span className="flex items-center gap-1">
-                <Unlock className="w-3 h-3" /> REABERTO EM RETIFICAÇÃO
+                <Unlock className="w-3 h-3" /> {status === 'REABERTO' ? 'REABERTO EM RETIFICAÇÃO' : 'PENDÊNCIA EM MÊS ANTERIOR'}
               </span>
             ) : (
               <span className="flex items-center gap-1">
@@ -112,10 +128,15 @@ export const CompetenciaStatusBar: React.FC<CompetenciaStatusBarProps> = ({
 
         {/* Mensagem descritiva e Botão de Ação */}
         <div className="flex items-center space-x-3">
-          {status === 'FECHADO' ? (
+          {estadoCor.cor === 'VERMELHO' ? (
             <div className="hidden md:flex items-center text-xs text-rose-400 gap-1.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>Apontamentos travados para resguardar a folha homologada.</span>
+            </div>
+          ) : estadoCor.cor === 'AMARELO' && estadoCor.temPendenciaAnterior ? (
+            <div className="hidden md:flex items-center text-xs text-amber-400 gap-1.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Homologue o mês anterior ({estadoCor.mesesAnterioresAbertos.join(', ')}) antes de fechar este mês.</span>
             </div>
           ) : (
             <div className="hidden md:flex items-center text-xs text-slate-400 gap-1.5">
@@ -130,12 +151,14 @@ export const CompetenciaStatusBar: React.FC<CompetenciaStatusBarProps> = ({
             size="sm"
             onClick={onOpenManagementModal}
             className={`font-semibold text-xs ${
-              status === 'FECHADO'
+              estadoCor.cor === 'VERMELHO'
                 ? 'border-rose-700/40 text-rose-300 hover:bg-rose-500/10'
+                : estadoCor.cor === 'AMARELO'
+                ? 'border-amber-700/40 text-amber-300 hover:bg-amber-500/10'
                 : 'border-blue-700/40 text-blue-400 hover:bg-blue-500/10'
             }`}
           >
-            {status === 'FECHADO' ? 'Ver Homologação' : 'Homologar / Fechar Mês'}
+            {estadoCor.cor === 'VERMELHO' ? 'Ver Homologação' : 'Homologar / Fechar Mês'}
           </Button>
         </div>
       </div>

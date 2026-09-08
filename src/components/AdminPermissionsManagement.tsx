@@ -28,7 +28,8 @@ import {
   Calendar,
   X,
   Sparkles,
-  Ban
+  Ban,
+  RefreshCw
 } from 'lucide-react';
 
 interface AdminPermissionsManagementProps {
@@ -90,6 +91,62 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Forçar atualização manual da lista de administradores e solicitações pendentes
+  const handleRefreshAdmins = async () => {
+    setIsRefreshing(true);
+    setErrorMsg(null);
+    try {
+      const freshList = await firestoreService.getAdmins(true);
+      const cleanedList = freshList.filter(a => 
+        a.email && 
+        !a.email.includes('@empresa.com.br') && 
+        a.email !== 'admin@comara.mil.br'
+      );
+
+      const masterEmail = 'coari.comara@gmail.com';
+      const hasMaster = cleanedList.some(a => a.email.toLowerCase() === masterEmail.toLowerCase());
+      let fullList = [...cleanedList];
+      if (!hasMaster) {
+        fullList.unshift({
+          id: 'adm-super-master',
+          email: masterEmail,
+          nome: 'Coari Comara (Administrador Geral)',
+          cargo: 'Super Administrador TI / RH',
+          funcao: 'Super Administrador TI / RH',
+          postoGraduacao: 'Maj',
+          nomeGuerra: 'Coari',
+          saram: '1000000',
+          tituloImpressao: 'Chefe da Seção de Pessoal & TI',
+          nivelAcesso: 'SUPER_ADMIN',
+          role: 'SUPER_ADMIN',
+          status: 'ativo',
+          ativo: true,
+          sede: 'TODAS',
+          canteiroSede: 'TODAS',
+          criadoEm: '2026-01-01 00:00:00',
+        });
+      }
+      setAdmins(fullList);
+      if (onAdminListChange) onAdminListChange(fullList);
+      storageService.saveAdmins(fullList);
+
+      const pendentesNovos = fullList.filter(a => a.status === 'pendente').length;
+      if (pendentesNovos > 0) {
+        setFeedbackMsg(`Base atualizada! ${pendentesNovos} solicitação(ões) de acesso pendente(s) encontrada(s).`);
+      } else {
+        setFeedbackMsg('Lista de acessos atualizada. Nenhuma nova solicitação pendente no momento.');
+      }
+      setTimeout(() => setFeedbackMsg(null), 4000);
+    } catch (err: any) {
+      console.error('Erro ao atualizar lista de administradores:', err);
+      setErrorMsg('Falha ao consultar novas solicitações no Firestore.');
+      setTimeout(() => setErrorMsg(null), 4000);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Sync real-time with Firestore (once, optimized)
   useEffect(() => {
@@ -482,17 +539,35 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
           </p>
         </div>
 
-        {isCurrentSuperAdmin && (
+        <div className="flex items-center gap-2">
           <button
-            id="btn-novo-pre-cadastro"
+            id="btn-atualizar-rbac"
             type="button"
-            onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#3B82F6] hover:bg-blue-600 active:scale-95 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+            onClick={handleRefreshAdmins}
+            disabled={isRefreshing}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-all active:scale-95 cursor-pointer disabled:opacity-50 ${
+              isDark 
+                ? 'bg-[#16243D] text-slate-300 border-[#243756] hover:text-white hover:bg-[#1E3252]' 
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+            }`}
+            title="Atualizar lista de administradores e solicitações pendentes no Cloud Firestore"
           >
-            <UserPlus className="w-4 h-4" />
-            <span>Novo Pré-Cadastro</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
+            <span>{isRefreshing ? 'Atualizando...' : 'Atualizar'}</span>
           </button>
-        )}
+
+          {isCurrentSuperAdmin && (
+            <button
+              id="btn-novo-pre-cadastro"
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="flex items-center gap-2 px-4 py-2 bg-[#3B82F6] hover:bg-blue-600 active:scale-95 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Novo Pré-Cadastro</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Feedback Alert */}
@@ -627,6 +702,43 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
         </button>
       </div>
 
+      {/* BANNER DEDICADO NA ABA PENDENTE COM BOTÃO DE ATUALIZAR */}
+      {activeTab === 'PENDENTES' && (
+        <div className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${
+          isDark ? 'bg-amber-950/25 border-amber-500/40 text-amber-300' : 'bg-amber-50/90 border-amber-300 text-amber-900'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+              <UserCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold flex items-center gap-2">
+                <span>Solicitações de Acesso Pendentes</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold bg-amber-500/30 text-amber-200 border border-amber-500/40">
+                  {pendingCount} {pendingCount === 1 ? 'pendente' : 'pendentes'}
+                </span>
+              </div>
+              <p className={`text-[11px] mt-0.5 leading-tight ${isDark ? 'text-amber-200/80' : 'text-amber-800'}`}>
+                {pendingCount === 0 
+                  ? 'Nenhum pedido de acesso aguardando homologação. Clique em atualizar para checar novas tentativas de login.' 
+                  : 'Usuários autenticados via Google aguardando atribuição de perfil e canteiro.'}
+              </p>
+            </div>
+          </div>
+          <button
+            id="btn-atualizar-pendentes-banner"
+            type="button"
+            onClick={handleRefreshAdmins}
+            disabled={isRefreshing}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 shadow-sm transition-all cursor-pointer disabled:opacity-50 shrink-0"
+            title="Verificar se alguém pediu acesso sem precisar sair e entrar novamente"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Verificando...' : 'Atualizar Pendentes'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Tabela de Administradores / Gestores */}
       <div className={`rounded-2xl border shadow-sm overflow-hidden ${
         isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'
@@ -649,10 +761,36 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
             }`}>
               {filteredAdmins.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-xs">
-                    <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-                      Nenhum usuário encontrado nesta aba.
-                    </p>
+                  <td colSpan={5} className="py-12 text-center text-xs">
+                    {activeTab === 'PENDENTES' ? (
+                      <div className="max-w-sm mx-auto space-y-3">
+                        <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                          <UserCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                            Nenhuma solicitação pendente no momento
+                          </p>
+                          <p className={`text-[11px] mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Quando alguém tentar entrar com a conta Google corporativa, o pedido ficará visível aqui para sua liberação.
+                          </p>
+                        </div>
+                        <button
+                          id="btn-atualizar-pendentes-empty-state"
+                          type="button"
+                          onClick={handleRefreshAdmins}
+                          disabled={isRefreshing}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                          <span>{isRefreshing ? 'Verificando solicitações...' : 'Atualizar e Checar Agora'}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Nenhum usuário encontrado nesta aba.
+                      </p>
+                    )}
                   </td>
                 </tr>
               ) : (

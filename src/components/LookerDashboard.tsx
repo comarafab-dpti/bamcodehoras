@@ -49,7 +49,8 @@ import {
   ShieldCheck,
   Lock,
   Unlock,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { CompetenciaControle } from '../services/competenciaService';
 import { 
@@ -57,7 +58,9 @@ import {
   getCompetenciaAnterior, 
   getProximaCompetencia, 
   normalizarCanteiroId, 
-  statusEfetivoCanteiro 
+  statusEfetivoCanteiro,
+  calcularCorCompetencia,
+  ResultadoCorCompetencia
 } from '../services/competenciaEngine';
 
 interface LookerDashboardProps {
@@ -80,6 +83,7 @@ interface LookerDashboardProps {
   currentCompetencia?: string;
   competenciaControle?: CompetenciaControle | null;
   competenciaAnteriorControle?: CompetenciaControle | null;
+  todasCompetenciasControle?: CompetenciaControle[];
   onSelectCompetencia?: (comp: string) => void;
   onOpenCompetenciaModal?: () => void;
   activeCanteiro?: string;
@@ -109,6 +113,7 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
   currentCompetencia,
   competenciaControle,
   competenciaAnteriorControle,
+  todasCompetenciasControle = [],
   onSelectCompetencia,
   onOpenCompetenciaModal,
   activeCanteiro,
@@ -116,17 +121,30 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const isAuxDA = userRole === 'AUX_DA' || (userRole as string) === 'AUXILIAR_DA';
+  const isSedeLocked = Boolean(
+    activeCanteiro && 
+    !isSuperAdmin && 
+    userRole !== 'SUPER_ADMIN' && 
+    userRole !== 'RH_ADMIN'
+  );
 
   // Estado dos Filtros da Barra Superior
   const [filters, setFilters] = useState<DashboardFilter>({
     dataInicio: '',
     dataFim: '',
-    sede: 'TODAS',
+    sede: activeCanteiro || 'TODAS',
     funcao: 'TODAS',
     matriculaOrNome: '',
     statusBanco: 'TODOS',
     tipoOcorrencia: 'TODOS',
   });
+
+  // Forçar filtro de sede se o usuário for restrito à sua OU/Canteiro
+  useEffect(() => {
+    if (isSedeLocked && activeCanteiro) {
+      setFilters(prev => ({ ...prev, sede: activeCanteiro }));
+    }
+  }, [isSedeLocked, activeCanteiro]);
 
   // Estado de visibilidade dos filtros (ocultável para interface mais limpa)
   const [isFiltersExpanded, setIsFiltersExpanded] = useState<boolean>(false);
@@ -134,9 +152,9 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
   // Aba ativa: Resumo por Colaborador como padrão
   const [activeTab, setActiveTab] = useState<'colaboradores' | 'calendario' | 'por_sede' | 'extrato'>('colaboradores');
 
-  // Assegurar que se for Aux de DA e estiver em aba restrita, volte para colaboradores
+  // Assegurar que se for Aux de DA e estiver na aba por_sede, volte para colaboradores
   useEffect(() => {
-    if (isAuxDA && (activeTab === 'por_sede' || activeTab === 'extrato')) {
+    if (isAuxDA && activeTab === 'por_sede') {
       setActiveTab('colaboradores');
     }
   }, [isAuxDA, activeTab]);
@@ -327,6 +345,27 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
     ? statusEfetivoCanteiro(competenciaAnteriorControle?.statusCanteiros, normalizedCanteiro) 
     : 'ABERTO';
   const canteiroLiberado = isSuperAdmin || statusCanteiro === 'FECHADO';
+
+  // Coleta dos meses com lançamentos para conferência contábil de competências passadas
+  const mesesComLancamentos = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach(r => {
+      const comp = r.competencia || (r.dataRegistro ? r.dataRegistro.slice(0, 7) : null);
+      if (comp) set.add(comp);
+    });
+    return Array.from(set);
+  }, [records]);
+
+  // Apuração da cor visual do card (Regra SPTF: Fechado = Vermelho, Aberto com pendência anterior = Amarelo, Aberto regular = Verde)
+  const estadoCorCompetencia = useMemo(() => {
+    return calcularCorCompetencia({
+      competenciaAtual: compAtual,
+      statusCompetenciaAtual: statusCompetencia,
+      statusCompetenciaAnterior: competenciaAnteriorControle?.status,
+      mesesControle: todasCompetenciasControle,
+      mesesComLancamentos,
+    });
+  }, [compAtual, statusCompetencia, competenciaAnteriorControle, todasCompetenciasControle, mesesComLancamentos]);
 
   // Métricas Globais Looker Studio (KPIs)
   const kpis = useMemo(() => {
@@ -574,33 +613,46 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
             {/* 2. Sede */}
             <div>
               <label className={`block text-[10px] uppercase font-bold mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                Sede / Canteiro
+                Sede / Canteiro {isSedeLocked && <span className="text-[9px] lowercase font-normal text-blue-400">(fixo na sua OU)</span>}
               </label>
               <select
-                value={filters.sede}
-                onChange={(e) => setFilters({ ...filters, sede: e.target.value })}
-                className={`w-full px-2 py-1.5 rounded-xl border text-xs font-mono font-medium transition-colors focus:outline-hidden focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] ${
+                value={isSedeLocked ? (activeCanteiro || '') : filters.sede}
+                onChange={(e) => {
+                  if (!isSedeLocked) {
+                    setFilters({ ...filters, sede: e.target.value });
+                  }
+                }}
+                disabled={isSedeLocked}
+                className={`w-full px-2 py-1.5 rounded-xl border text-xs font-mono font-medium transition-colors focus:outline-hidden focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] disabled:opacity-85 disabled:cursor-not-allowed ${
                   isDark 
                     ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' 
                     : 'bg-slate-50 border-slate-300 text-slate-900'
                 }`}
               >
-                <option value="TODAS">Todas as Sedes / Canteiros</option>
-                {Array.isArray(constructionSites) && constructionSites.length > 0 ? (
-                  constructionSites.map((site) => {
-                    const code = (site.code || site.codigo || site.branch || site.sede || '').toUpperCase();
-                    const name = site.name || site.nome || `Canteiro ${code}`;
-                    return (
-                      <option key={site.id || code} value={code}>
-                        {code} ({name})
-                      </option>
-                    );
-                  })
+                {isSedeLocked ? (
+                  <option value={activeCanteiro}>
+                    {activeCanteiro} (Sua Unidade / OU)
+                  </option>
                 ) : (
                   <>
-                    <option value="KO">KO (Coari)</option>
-                    <option value="BE">BE (Belém)</option>
-                    <option value="MN">MN (Manaus)</option>
+                    <option value="TODAS">Todas as Sedes / Canteiros</option>
+                    {Array.isArray(constructionSites) && constructionSites.length > 0 ? (
+                      constructionSites.map((site) => {
+                        const code = (site.code || site.codigo || site.branch || site.sede || '').toUpperCase();
+                        const name = site.name || site.nome || `Canteiro ${code}`;
+                        return (
+                          <option key={site.id || code} value={code}>
+                            {code} ({name})
+                          </option>
+                        );
+                      })
+                    ) : (
+                      <>
+                        <option value="KO">KO (Coari)</option>
+                        <option value="BE">BE (Belém)</option>
+                        <option value="MN">MN (Manaus)</option>
+                      </>
+                    )}
                   </>
                 )}
               </select>
@@ -759,10 +811,9 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
         </div>
       )}
 
-      {/* CARDS DE MÉTRICAS (KPIs) - Ocultos para Aux de DA */}
-      {!isAuxDA && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-          {/* KPI 1: Saldo Acumulado Geral */}
+      {/* CARDS DE MÉTRICAS (KPIs) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* KPI 1: Saldo Acumulado Geral */}
           <div className={`p-5 rounded-2xl border shadow-xs transition-all ${
             isDark 
               ? 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
@@ -884,36 +935,48 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
 
           {/* KPI 5: Competência Contábil & Fechamento SPTF */}
           <div className={`p-5 rounded-2xl border shadow-xs transition-all flex flex-col justify-between ${
-            isDark 
-              ? statusCompetencia === 'FECHADO'
-                ? 'bg-[#16243D] border-rose-900/50 hover:border-rose-700/70'
-                : 'bg-[#16243D] border-[#243756] hover:border-[#335075]' 
-              : statusCompetencia === 'FECHADO'
-                ? 'bg-white border-rose-200 hover:border-rose-300'
-                : 'bg-white border-gray-200 hover:border-gray-300'
+            estadoCorCompetencia.cor === 'VERMELHO'
+              ? isDark 
+                ? 'bg-[#16243D] border-rose-900/60 hover:border-rose-700/80 ring-1 ring-rose-500/20'
+                : 'bg-white border-rose-300 hover:border-rose-400 ring-1 ring-rose-200'
+              : estadoCorCompetencia.cor === 'AMARELO'
+              ? isDark
+                ? 'bg-[#16243D] border-amber-500/70 hover:border-amber-400 ring-1 ring-amber-500/30'
+                : 'bg-white border-amber-400 hover:border-amber-500 ring-1 ring-amber-300/40'
+              : isDark
+                ? 'bg-[#16243D] border-emerald-500/60 hover:border-emerald-400 ring-1 ring-emerald-500/20'
+                : 'bg-white border-emerald-300 hover:border-emerald-400 ring-1 ring-emerald-200'
           }`}>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5">
-                  <p className={`text-xs font-bold uppercase font-mono ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+                  <p className={`text-xs font-bold uppercase font-mono ${
+                    estadoCorCompetencia.cor === 'VERMELHO'
+                      ? isDark ? 'text-rose-400' : 'text-rose-700'
+                      : estadoCorCompetencia.cor === 'AMARELO'
+                      ? isDark ? 'text-amber-400' : 'text-amber-700'
+                      : isDark ? 'text-emerald-400' : 'text-emerald-700'
+                  }`}>
                     Competência
                   </p>
                   <InfoTooltip 
                     theme={theme}
-                    content="Controle contábil mensal do SPTF com apuração de deltas, transporte de saldos e fechamento obrigatório por canteiro de obras."
+                    content="Controle contábil mensal do SPTF: Vermelho quando fechado; Amarelo quando aberto com pendência no mês anterior ou meses passados; Verde quando aberto com todas as competências passadas devidamente fechadas."
                   />
                 </div>
-                <div className={`p-1.5 rounded-lg ${
-                  statusCompetencia === 'FECHADO'
-                    ? isDark ? 'bg-rose-950/40 text-rose-400' : 'bg-rose-50 text-rose-600'
-                    : statusCompetencia === 'REABERTO'
-                    ? isDark ? 'bg-amber-950/40 text-amber-400' : 'bg-amber-50 text-amber-600'
-                    : isDark ? 'bg-blue-950/40 text-blue-400' : 'bg-blue-50 text-blue-600'
+                <div className={`p-1.5 rounded-lg border ${
+                  estadoCorCompetencia.cor === 'VERMELHO'
+                    ? isDark ? 'bg-rose-950/50 text-rose-400 border-rose-800/60' : 'bg-rose-50 text-rose-600 border-rose-200'
+                    : estadoCorCompetencia.cor === 'AMARELO'
+                    ? isDark ? 'bg-amber-950/50 text-amber-400 border-amber-800/60' : 'bg-amber-50 text-amber-600 border-amber-200'
+                    : isDark ? 'bg-emerald-950/50 text-emerald-400 border-emerald-800/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                 }`}>
-                  {statusCompetencia === 'FECHADO' ? (
+                  {estadoCorCompetencia.cor === 'VERMELHO' ? (
                     <Lock className="w-4 h-4" />
+                  ) : estadoCorCompetencia.cor === 'AMARELO' ? (
+                    <AlertTriangle className="w-4 h-4" />
                   ) : (
-                    <ShieldCheck className="w-4 h-4" />
+                    <CheckCircle2 className="w-4 h-4" />
                   )}
                 </div>
               </div>
@@ -961,23 +1024,37 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
 
             {/* Status e Botão de Gestão */}
             <div className="mt-2 pt-2 border-t border-slate-700/20">
+              {/* Alerta de pendência quando amarelo */}
+              {estadoCorCompetencia.cor === 'AMARELO' && estadoCorCompetencia.temPendenciaAnterior && (
+                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-mono mb-2 border ${
+                  isDark ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900'
+                }`} title={`Competência anterior (${estadoCorCompetencia.mesesAnterioresAbertos.join(', ')}) pendente de homologação`}>
+                  <AlertTriangle className="w-3 h-3 shrink-0 text-amber-400" />
+                  <span className="truncate">
+                    {estadoCorCompetencia.mesesAnterioresAbertos.length === 1
+                      ? `Mês anterior (${estadoCorCompetencia.mesesAnterioresAbertos[0]}) em aberto`
+                      : `${estadoCorCompetencia.mesesAnterioresAbertos.length} meses passados em aberto`}
+                  </span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-1 text-[10px] font-mono mb-2">
-                <span className={`inline-flex items-center gap-1 font-bold uppercase px-1.5 py-0.5 rounded ${
-                  statusCompetencia === 'FECHADO'
-                    ? isDark ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-700'
-                    : statusCompetencia === 'REABERTO'
-                    ? isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
-                    : isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                <span className={`inline-flex items-center gap-1 font-bold uppercase px-1.5 py-0.5 rounded border ${
+                  estadoCorCompetencia.cor === 'VERMELHO'
+                    ? isDark ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-rose-100 text-rose-700 border-rose-200'
+                    : estadoCorCompetencia.cor === 'AMARELO'
+                    ? isDark ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-800 border-amber-300'
+                    : isDark ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                 }`}>
-                  {statusCompetencia === 'FECHADO' ? (
+                  {estadoCorCompetencia.cor === 'VERMELHO' ? (
                     <>
                       <Lock className="w-2.5 h-2.5 shrink-0" />
                       <span>Fechado</span>
                     </>
-                  ) : statusCompetencia === 'REABERTO' ? (
+                  ) : estadoCorCompetencia.cor === 'AMARELO' ? (
                     <>
-                      <Unlock className="w-2.5 h-2.5 shrink-0" />
-                      <span>Reaberto</span>
+                      <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                      <span>{statusCompetencia === 'REABERTO' ? 'Reaberto' : 'Pendente Anterior'}</span>
                     </>
                   ) : (
                     <>
@@ -1002,23 +1079,26 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
                   id="btn-kpi-gerenciar-competencia"
                   onClick={onOpenCompetenciaModal}
                   className={`w-full py-1.5 px-2 rounded-xl text-[11px] font-bold font-mono transition-all flex items-center justify-center gap-1.5 border active:scale-[0.98] cursor-pointer ${
-                    statusCompetencia === 'FECHADO'
+                    estadoCorCompetencia.cor === 'VERMELHO'
                       ? isDark
                         ? 'bg-rose-950/40 border-rose-800/60 text-rose-300 hover:bg-rose-900/50'
                         : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                      : estadoCorCompetencia.cor === 'AMARELO'
+                      ? isDark
+                        ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 hover:bg-amber-500/30'
+                        : 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200'
                       : isDark
                         ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-xs shadow-blue-600/20'
                         : 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-xs'
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span>{statusCompetencia === 'FECHADO' ? 'Ver Homologação' : 'Homologar / Fechar'}</span>
+                  <span>{estadoCorCompetencia.cor === 'VERMELHO' ? 'Ver Homologação' : 'Homologar / Fechar'}</span>
                 </button>
               )}
             </div>
           </div>
         </div>
-      )}
 
       {/* DASHBOARD TAB NAVIGATION & CONTENT */}
       <div className={`rounded-2xl border flex flex-col overflow-hidden shadow-sm transition-colors ${
@@ -1070,20 +1150,18 @@ export const LookerDashboard: React.FC<LookerDashboardProps> = ({
               </button>
             )}
 
-            {/* Aba 4: Lançamentos Individuais - Oculto para Aux de DA */}
-            {!isAuxDA && (
-              <button
-                onClick={() => setActiveTab('extrato')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  activeTab === 'extrato'
-                    ? isDark ? 'bg-[#243756] text-white border border-[#335075] shadow-xs' : 'bg-white text-blue-700 border border-gray-300 shadow-xs'
-                    : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
-                Lançamentos Individuais ({filteredRecords.length})
-              </button>
-            )}
+            {/* Aba 4: Lançamentos Individuais */}
+            <button
+              onClick={() => setActiveTab('extrato')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all active:scale-[0.98] flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                activeTab === 'extrato'
+                  ? isDark ? 'bg-[#243756] text-white border border-[#335075] shadow-xs' : 'bg-white text-blue-700 border border-gray-300 shadow-xs'
+                  : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-500" />
+              Lançamentos Individuais ({filteredRecords.length})
+            </button>
           </div>
 
           <div className="flex items-center gap-3">

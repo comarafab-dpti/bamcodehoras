@@ -5,10 +5,31 @@ export interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+// Captura no nível de módulo para garantir que o evento não seja perdido
+// caso o navegador o dispare antes da montagem completa do React no mobile
+let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
+const promptListeners = new Set<(prompt: BeforeInstallPromptEvent | null) => void>();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    e.preventDefault();
+    globalDeferredPrompt = e as BeforeInstallPromptEvent;
+    promptListeners.forEach((listener) => listener(globalDeferredPrompt));
+  });
+
+  window.addEventListener('appinstalled', () => {
+    globalDeferredPrompt = null;
+    promptListeners.forEach((listener) => listener(null));
+  });
+}
+
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => globalDeferredPrompt);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isInIframe, setIsInIframe] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
@@ -25,38 +46,42 @@ export function usePWAInstall() {
 
     checkStandalone();
 
-    // 2. Detectar dispositivos iOS (Safari não suporta beforeinstallprompt, requer guia de adicionar à tela de início)
+    // 2. Detectar ambiente e dispositivo
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) && !(window as unknown as { MSStream?: unknown }).MSStream;
+    const isAndroidDevice = /android/.test(userAgent);
+    const isMobileDevice = isIOSDevice || isAndroidDevice || /mobile|tablet/.test(userAgent);
+    const inIframe = window.self !== window.top;
+
     setIsIOS(isIOSDevice);
+    setIsAndroid(isAndroidDevice);
+    setIsMobile(isMobileDevice);
+    setIsInIframe(inIframe);
 
-    // 3. Listener para o evento padrão do navegador para instalação
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    // 3. Listener compartilhado para atualizações do prompt
+    const handlePromptChange = (prompt: BeforeInstallPromptEvent | null) => {
+      setDeferredPrompt(prompt);
+      if (!prompt) {
+        checkStandalone();
+      }
     };
 
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
+    promptListeners.add(handlePromptChange);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
+      promptListeners.delete(handlePromptChange);
     };
   }, []);
 
   const install = async (): Promise<boolean> => {
-    if (!deferredPrompt) return false;
+    const promptToUse = deferredPrompt || globalDeferredPrompt;
+    if (!promptToUse) return false;
     try {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
+      await promptToUse.prompt();
+      const choice = await promptToUse.userChoice;
       if (choice.outcome === 'accepted') {
         setIsInstalled(true);
+        globalDeferredPrompt = null;
         setDeferredPrompt(null);
         return true;
       }
@@ -68,10 +93,14 @@ export function usePWAInstall() {
   };
 
   return {
-    isInstallable: !!deferredPrompt,
+    isInstallable: !!(deferredPrompt || globalDeferredPrompt),
     isInstalled,
     isStandalone,
     isIOS,
+    isAndroid,
+    isMobile,
+    isInIframe,
     install,
   };
 }
+

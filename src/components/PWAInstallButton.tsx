@@ -3,7 +3,7 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { Download, Smartphone, Share2, PlusSquare, X, CheckCircle2, Laptop } from 'lucide-react';
 
 interface PWAInstallButtonProps {
-  variant?: 'navbar' | 'floating' | 'card' | 'menu-item';
+  variant?: 'navbar' | 'floating' | 'card' | 'menu-item' | 'banner';
   theme?: 'dark' | 'light';
   className?: string;
   onInstalled?: () => void;
@@ -15,7 +15,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   className = '',
   onInstalled,
 }) => {
-  const { isInstallable, isInstalled, isStandalone, isIOS, install } = usePWAInstall();
+  const { isInstallable, isInstalled, isStandalone, isIOS, isAndroid, isInIframe, install } = usePWAInstall();
   const [showIOSModal, setShowIOSModal] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
@@ -43,6 +43,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     }
 
     setShowInstallHelp(true);
+  };
+
+  const handleOpenExternal = () => {
+    window.open(window.location.href, '_blank');
   };
 
   // Renderização do Modal de Instruções para iOS (Safari)
@@ -110,7 +114,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <PlusSquare className="w-3.5 h-3.5 text-emerald-400 inline" />
                 </p>
                 <p className={`text-[11px] mt-0.5 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                  Role as opções do menu do Safari até encontrar o item correspondente.
+                  Role as opções do menu do Safari até encontrar o item com o sinal (+).
                 </p>
               </div>
             </div>
@@ -127,7 +131,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 inline" />
                 </p>
                 <p className={`text-[11px] mt-0.5 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                  No canto superior direito para fixar o atalho em tela cheia.
+                  No canto superior direito para fixar o ícone oficial em tela cheia.
                 </p>
               </div>
             </div>
@@ -154,11 +158,16 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           isDark ? 'bg-[#16243D] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-900'
         }`} role="dialog" aria-modal="true" aria-labelledby="pwa-install-help-title">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 id="pwa-install-help-title" className="text-base font-bold">Instalar App COMARA</h3>
-              <p className={`text-xs mt-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                O navegador ainda não liberou o botão automático de instalação.
-              </p>
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+                <Smartphone className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 id="pwa-install-help-title" className="text-base font-bold">Instalar Aplicativo COMARA</h3>
+                <p className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                  Instruções para o seu navegador
+                </p>
+              </div>
             </div>
             <button
               type="button"
@@ -169,16 +178,52 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className={`mt-5 p-3 rounded-xl border text-xs leading-relaxed ${
-            isDark ? 'bg-[#0F1B33] border-[#243756] text-[#CBD5E1]' : 'bg-slate-50 border-slate-200 text-slate-600'
-          }`}>
-            <p><strong>Chrome no computador:</strong> abra o menu ⋮ e selecione <strong>Instalar COMARA</strong> ou <strong>Salvar e compartilhar → Instalar página como app</strong>.</p>
-            <p className="mt-2"><strong>Chrome no celular:</strong> abra o menu ⋮ e toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.</p>
+
+          <div className="mt-4 space-y-3 text-xs leading-relaxed">
+            {isInIframe && (
+              <div className={`p-3 rounded-xl border ${
+                isDark ? 'bg-amber-950/30 border-amber-800/40 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
+                <p className="font-semibold">⚠️ Visualização em Modo Prévia</p>
+                <p className="mt-1 text-[11px]">
+                  Os navegadores bloqueiam a instalação automática de PWAs dentro de telas de teste ou prévias integradas. Abra diretamente no navegador do seu celular:
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenExternal}
+                  className="mt-2.5 w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Laptop className="w-3.5 h-3.5" />
+                  <span>Abrir no Navegador do Celular</span>
+                </button>
+              </div>
+            )}
+
+            <div className={`p-3 rounded-xl border ${
+              isDark ? 'bg-[#0F1B33] border-[#243756] text-[#CBD5E1]' : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}>
+              <p className="font-bold text-blue-400">📱 No Celular (Android / Chrome):</p>
+              <ol className="list-decimal list-inside mt-1.5 space-y-1 text-[11px]">
+                <li>Toque no menu de <strong>3 pontos (⋮)</strong> no canto superior direito do Chrome.</li>
+                <li>Toque na opção <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong>.</li>
+                <li>Confirme para ter o atalho oficial com inicialização instantânea.</li>
+              </ol>
+            </div>
+
+            <div className={`p-3 rounded-xl border ${
+              isDark ? 'bg-[#0F1B33] border-[#243756] text-[#CBD5E1]' : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}>
+              <p className="font-bold text-emerald-400">💻 No Computador (Chrome / Edge):</p>
+              <p className="mt-1 text-[11px]">
+                Clique no ícone de instalação <Download className="w-3 h-3 inline text-blue-400" /> localizado na barra de endereços (ao lado da estrela de favoritos), ou abra o menu <strong>⋮ → Instalar COMARA</strong>.
+              </p>
+            </div>
           </div>
+
           <button
             type="button"
             onClick={() => setShowInstallHelp(false)}
-            className="w-full mt-5 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+            className="w-full mt-4 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition-all"
           >
             Entendido
           </button>
@@ -186,6 +231,46 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       </div>
     );
   };
+
+  // Variante: Banner Mobile Destacado (Para o topo ou rodapé da visualização mobile)
+  if (variant === 'banner') {
+    return (
+      <>
+        <div className={`p-3 sm:p-4 rounded-2xl border transition-all ${
+          isDark ? 'bg-[#16243D] border-[#243756] text-[#E2E8F0]' : 'bg-blue-50/90 border-blue-200 text-slate-900 shadow-sm'
+        } ${className}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/30">
+                <Smartphone className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold leading-tight flex items-center gap-1.5">
+                  <span>Instalar App COMARA</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-blue-500/20 text-blue-300">
+                    PWA
+                  </span>
+                </p>
+                <p className={`text-[11px] sm:text-xs mt-0.5 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                  Acesse seu Banco de Horas em 1 toque na tela inicial
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleInstallClick}
+              disabled={isInstalling}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isInstalling ? 'Instalando...' : 'Instalar'}</span>
+            </button>
+          </div>
+        </div>
+        {renderIOSModal()}
+        {renderInstallHelp()}
+      </>
+    );
+  }
 
   // Variante: Menu Item (Para dentro de dropdowns de configurações/perfil)
   if (variant === 'menu-item') {
@@ -256,7 +341,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     );
   }
 
-  // Variante Padrão: Navbar (Botão discreto no header)
+  // Variante Padrão: Navbar (Botão visível no header tanto desktop quanto mobile)
   return (
     <>
       <button
@@ -264,14 +349,14 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         onClick={handleInstallClick}
         disabled={isInstalling}
         title={isIOS ? 'Como instalar no iPhone/iPad' : 'Instalar Aplicativo COMARA na Área de Trabalho ou Celular'}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] border cursor-pointer ${
+        className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all active:scale-[0.98] border cursor-pointer ${
           isDark
             ? 'bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 hover:text-blue-200 border-blue-700/50 shadow-xs'
             : 'bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border-blue-200 shadow-xs'
         } ${className}`}
       >
         <Download className="w-3.5 h-3.5 text-blue-400" />
-        <span className="hidden sm:inline">Instalar App</span>
+        <span className="inline">Instalar App</span>
       </button>
       {renderIOSModal()}
       {renderInstallHelp()}

@@ -190,6 +190,26 @@ export const competenciaService = {
     );
   },
 
+  /**
+   * Listener em tempo real para todas as competências cadastradas em competencias_controle.
+   * Mantém a lista atualizada para cálculo de status em lote e histórico sem leituras repetidas.
+   */
+  subscribeTodasCompetenciasControle(
+    onSuccess: (controles: CompetenciaControle[]) => void,
+    onError?: (error: Error) => void,
+  ): Unsubscribe {
+    return onSnapshot(
+      collection(db, COLLECTIONS.COMPETENCIAS_CONTROLE),
+      (snap) => {
+        const list: CompetenciaControle[] = [];
+        snap.forEach((d) => list.push(d.data() as CompetenciaControle));
+        list.sort((a, b) => compararCompetencias(a.id, b.id));
+        onSuccess(list);
+      },
+      (error) => onError?.(error),
+    );
+  },
+
   async verificarTravaCanteiro(
     competencia: string,
     canteiroId: string,

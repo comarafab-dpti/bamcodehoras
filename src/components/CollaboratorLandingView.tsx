@@ -332,10 +332,8 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
         </div>
       </header>
 
-      <div className={`sm:hidden flex justify-end px-3 py-2 border-b ${
-        isDark ? 'bg-[#11203A] border-[#233654]' : 'bg-white border-slate-200'
-      }`}>
-        <PWAInstallButton variant="navbar" theme={theme} />
+      <div className="sm:hidden px-3 pt-2.5">
+        <PWAInstallButton variant="banner" theme={theme} />
       </div>
 
       {/* ------------------------------------------------------------- */}

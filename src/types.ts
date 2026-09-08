@@ -293,6 +293,7 @@ export interface TimeRecord {
   employeeFuncao?: string;
   employeeAvatarUrl?: string;
   dataRegistro: string; // YYYY-MM-DD
+  competencia?: string; // YYYY-MM derivado de dataRegistro (Fase 4 blindagem)
   data_ocorrencia?: string; // Data exata em que a hora positiva ou negativa ocorreu
   tipoOcorrencia: OccurrenceType;
   codigoOcorrencia?: 'TRAB' | 'F' | 'D' | 'AT' | 'FE' | 'LIC' | 'COMP';

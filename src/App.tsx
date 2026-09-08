@@ -43,6 +43,7 @@ import { ComaraLogoModal } from './components/ComaraLogoModal';
 import { DatabaseSafetyActionModal, SafetyActionType } from './components/DatabaseSafetyActionModal';
 import { SessionTimeoutModal } from './components/SessionTimeoutModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { MobilePWAInstallBanner } from './components/MobilePWAInstallBanner';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { rbacService } from './services/rbacService';
 import { registrarLogAuditoria } from './services/auditService';
@@ -168,6 +169,7 @@ export default function App() {
   });
   const [competenciaControle, setCompetenciaControle] = useState<CompetenciaControle | null>(null);
   const [competenciaAnteriorControle, setCompetenciaAnteriorControle] = useState<CompetenciaControle | null>(null);
+  const [todasCompetenciasControle, setTodasCompetenciasControle] = useState<CompetenciaControle[]>([]);
   const [isCompetenciaModalOpen, setIsCompetenciaModalOpen] = useState(false);
 
   const carregarControleCompetencia = useCallback(async (comp: string) => {
@@ -190,9 +192,14 @@ export default function App() {
       setCompetenciaAnteriorControle,
       (error) => console.warn('Erro no listener da competência anterior:', error),
     );
+    const unsubscribeTodas = competenciaService.subscribeTodasCompetenciasControle(
+      setTodasCompetenciasControle,
+      (error) => console.warn('Erro no listener de todas as competências:', error),
+    );
     return () => {
       unsubscribeAtual();
       unsubscribeAnterior();
+      unsubscribeTodas();
     };
   }, [currentCompetencia]);
 
@@ -222,6 +229,30 @@ export default function App() {
   const isGlobalUser = rbacService.isGlobalRole(userRole);
   const activeCanteiro = !isGlobalUser ? currentUserCanteiro : undefined;
   const isSuperAdminSession = userRole === 'SUPER_ADMIN' || isMasterAdminEmail(currentUser?.email || '');
+
+  // Filtragem rigorosa por Tenancy para isolamento de canteiro/OU (ex: AUX_DA, CHEFE_DA)
+  const tenancyEmployees = useMemo(() => {
+    return rbacService.filterEmployeesByTenancy(employees, currentUser);
+  }, [employees, currentUser]);
+
+  const tenancyRecords = useMemo(() => {
+    return rbacService.filterRecordsByTenancy(records, tenancyEmployees, currentUser);
+  }, [records, tenancyEmployees, currentUser]);
+
+  const tenancyDispensas = useMemo(() => {
+    return rbacService.filterDispensasByTenancy(dispensasSptf, tenancyEmployees, currentUser);
+  }, [dispensasSptf, tenancyEmployees, currentUser]);
+
+  const tenancyInsalubrity = useMemo(() => {
+    return rbacService.filterInsalubrityByTenancy(insalubrityRecords, currentUser);
+  }, [insalubrityRecords, currentUser]);
+
+  // Guard de proteção: Aux de DA nunca acessa relatórios
+  useEffect(() => {
+    if (userRole === 'AUX_DA' && activeTab === 'relatorios') {
+      setActiveTab('dashboard');
+    }
+  }, [userRole, activeTab]);
 
   const confirmarBypassCanteiro = useCallback((canteiroId: string, acao: string) => {
     if (!isSuperAdminSession) return false;
@@ -1869,13 +1900,11 @@ export default function App() {
   }
 
   // -------------------------------------------------------------
-  // RENDER: VISÃO EXCLUSIVA MOBILE CHEFE / ENCARREGADO / AUX DA (RBAC)
+  // RENDER: VISÃO EXCLUSIVA MOBILE CHEFE / ENCARREGADO DE CANTEIRO (RBAC)
   // -------------------------------------------------------------
   if (
     userRole === 'CHEFE_CANTEIRO' || 
-    userRole === 'ENCARREGADO_CANTEIRO' || 
-    userRole === 'AUX_DA' || 
-    userRole === 'ENCARREGADO_DA'
+    userRole === 'ENCARREGADO_CANTEIRO'
   ) {
     return (
       <div translate="no" className="notranslate min-h-screen flex flex-col">
@@ -1933,6 +1962,9 @@ export default function App() {
           onStayLoggedIn={resetIdleTimer}
           onLogoutNow={forceIdleTimeout}
         />
+
+        {/* 11. Banner Proativo de Instalação Mobile PWA */}
+        <MobilePWAInstallBanner theme={theme} />
       </div>
     );
   }
@@ -2035,7 +2067,7 @@ export default function App() {
         onOpenImportRecordsModal={() => setIsImportRecordsModalOpen(true)}
         onOpenLogoModal={() => setIsLogoModalOpen(true)}
         systemConfig={systemConfig}
-        totalEmployees={employees.length}
+        totalEmployees={tenancyEmployees.length}
         theme={theme}
         onToggleTheme={handleToggleTheme}
         userMode={userMode}
@@ -2050,8 +2082,8 @@ export default function App() {
         <ErrorBoundary fallbackTitle="Erro ao carregar aba selecionada">
           {activeTab === 'dashboard' && (
             <LookerDashboard
-              employees={employees}
-              records={records}
+              employees={tenancyEmployees}
+              records={tenancyRecords}
               constructionSites={constructionSites}
               onOpenNewEntryModal={(mat) => handleOpenNewEntry(mat)}
               onOpenEditEntryModal={(rec) => handleOpenEditEntry(rec)}
@@ -2069,6 +2101,7 @@ export default function App() {
               currentCompetencia={currentCompetencia}
               competenciaControle={competenciaControle}
               competenciaAnteriorControle={competenciaAnteriorControle}
+              todasCompetenciasControle={todasCompetenciasControle}
               onSelectCompetencia={handleSelectCompetencia}
               onOpenCompetenciaModal={() => setIsCompetenciaModalOpen(true)}
               activeCanteiro={activeCanteiro || currentUser?.canteiroCodigo}
@@ -2078,10 +2111,10 @@ export default function App() {
 
           {activeTab === 'colaboradores' && (
             <EmployeeManagement
-              employees={employees}
-              records={records}
+              employees={tenancyEmployees}
+              records={tenancyRecords}
               constructionSites={constructionSites}
-              dispensas={dispensasSptf}
+              dispensas={tenancyDispensas}
               onUpdateEmployees={handleUpdateEmployees}
               onEmployeeSaved={handleEmployeeSaved}
               onViewStatement={(mat) => handleViewStatement(mat)}
@@ -2121,8 +2154,8 @@ export default function App() {
               fallbackMessage="Seu perfil não possui autorização para homologação de laudos de insalubridade."
             >
               <InsalubrityManagement
-                employees={employees}
-                insalubrityRecords={insalubrityRecords}
+                employees={tenancyEmployees}
+                insalubrityRecords={tenancyInsalubrity}
                 onSaveRecord={handleSaveInsalubrityRecord}
                 onSaveBatchRecords={handleSaveInsalubrityBatch}
                 onDeleteRecord={handleDeleteInsalubrityRecord}
@@ -2141,27 +2174,36 @@ export default function App() {
           )}
 
           {activeTab === 'relatorios' && (
-            <ExecutiveReportsView
-              employees={employees}
-              records={records}
-              insalubrityRecords={insalubrityRecords}
-              constructionSites={constructionSites}
-              systemConfig={systemConfig}
-              currentUserEmail={currentUserEmail}
-              userRole={userRole}
-              onSaveInsalubrityBatch={handleSaveInsalubrityBatch}
-              onFetchInsalubrityPeriod={handleFetchInsalubrityPeriod}
-              onNavigateToInsalubrity={() => setActiveTab('insalubridade')}
-              onOpenSptfDispensa={() => handleOpenSptfDispensa()}
-              theme={theme}
-            />
+            <ProtectedRoute
+              requiredPermission={(role) => rbacService.canAccessTab('relatorios', role)}
+              currentUserRole={userRole}
+              currentUser={currentUser}
+              onRedirectToDashboard={() => setActiveTab('dashboard')}
+              fallbackTitle="Relatórios Restritos"
+              fallbackMessage="O perfil de Auxiliar de DA não possui acesso ao módulo de relatórios executivos."
+            >
+              <ExecutiveReportsView
+                employees={tenancyEmployees}
+                records={tenancyRecords}
+                insalubrityRecords={tenancyInsalubrity}
+                constructionSites={constructionSites}
+                systemConfig={systemConfig}
+                currentUserEmail={currentUserEmail}
+                userRole={userRole}
+                onSaveInsalubrityBatch={handleSaveInsalubrityBatch}
+                onFetchInsalubrityPeriod={handleFetchInsalubrityPeriod}
+                onNavigateToInsalubrity={() => setActiveTab('insalubridade')}
+                onOpenSptfDispensa={() => handleOpenSptfDispensa()}
+                theme={theme}
+              />
+            </ProtectedRoute>
           )}
 
           {activeTab === 'extrato' && (
             <EmployeeStatement
-              employees={employees}
-              records={records}
-              insalubrityRecords={insalubrityRecords}
+              employees={tenancyEmployees}
+              records={tenancyRecords}
+              insalubrityRecords={tenancyInsalubrity}
               constructionSites={constructionSites}
               paystubs={paystubs}
               selectedMatricula={selectedMatricula}
@@ -2189,7 +2231,7 @@ export default function App() {
 
           {activeTab === 'dispensas_faltas' && (
             <DispensasFaltasManagement
-              employees={employees}
+              employees={tenancyEmployees}
               constructionSites={constructionSites}
               currentUserEmail={currentUserEmail}
               userRole={userRole}
@@ -2432,6 +2474,9 @@ export default function App() {
         onCompetenciaUpdated={(comp) => carregarControleCompetencia(comp)}
         onShowToast={showToast}
       />
+
+      {/* 11. Banner Proativo de Instalação Mobile PWA */}
+      <MobilePWAInstallBanner theme={theme} />
     </div>
   );
 }

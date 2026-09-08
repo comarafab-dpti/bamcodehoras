@@ -636,3 +636,111 @@ export function montarResumoAuditoriaFechamento(params: {
     })),
   };
 }
+
+export type CorStatusCompetencia = 'VERMELHO' | 'AMARELO' | 'VERDE';
+
+export interface ParametrosCorCompetencia {
+  competenciaAtual: string; // "YYYY-MM"
+  statusCompetenciaAtual?: string | null; // "FECHADO" | "REABERTO" | "ABERTO"
+  statusCompetenciaAnterior?: string | null; // "FECHADO" | "REABERTO" | "ABERTO"
+  mesesControle?: Array<{ id: string; status: string }>;
+  mesesComLancamentos?: string[];
+}
+
+export interface ResultadoCorCompetencia {
+  cor: CorStatusCompetencia;
+  isFechado: boolean;
+  temPendenciaAnterior: boolean;
+  mesesAnterioresAbertos: string[];
+}
+
+/**
+ * Calcula a cor e o estado de advertência visual do card de competência contábil:
+ * - VERMELHO: Quando o mês está fechado (FECHADO).
+ * - AMARELO: Quando o mês está aberto/reaberto, mas o mês anterior ou qualquer
+ *            outro mês passado possui pendência de fechamento (ABERTO ou REABERTO),
+ *            ou se a própria competência foi reaberta.
+ * - VERDE: Quando o mês está aberto e todas as competências anteriores estão
+ *          devidamente fechadas (FECHADO).
+ */
+export function calcularCorCompetencia(params: ParametrosCorCompetencia): ResultadoCorCompetencia {
+  const {
+    competenciaAtual,
+    statusCompetenciaAtual,
+    statusCompetenciaAnterior,
+    mesesControle = [],
+    mesesComLancamentos = [],
+  } = params;
+
+  const isFechado = statusCompetenciaAtual === 'FECHADO';
+  if (isFechado) {
+    return {
+      cor: 'VERMELHO',
+      isFechado: true,
+      temPendenciaAnterior: false,
+      mesesAnterioresAbertos: [],
+    };
+  }
+
+  // Mapa de status das competências conhecidas em controle
+  const mapaStatus = new Map<string, string>();
+  mesesControle.forEach((c) => {
+    if (c.id) mapaStatus.set(c.id, c.status);
+  });
+
+  const compAnterior = getCompetenciaAnterior(competenciaAtual);
+  if (statusCompetenciaAnterior && !mapaStatus.has(compAnterior)) {
+    mapaStatus.set(compAnterior, statusCompetenciaAnterior);
+  }
+
+  // Coleta todos os meses anteriores que possuem controle, lançamentos ou o mês imediatamente anterior
+  const mesesAnteriores = new Set<string>();
+
+  if (compAnterior && compAnterior < competenciaAtual) {
+    mesesAnteriores.add(compAnterior);
+  }
+
+  mesesComLancamentos.forEach((mes) => {
+    if (mes && mes < competenciaAtual) {
+      mesesAnteriores.add(mes);
+    }
+  });
+
+  mesesControle.forEach((c) => {
+    if (c.id && c.id < competenciaAtual) {
+      mesesAnteriores.add(c.id);
+    }
+  });
+
+  // Determina quais desses meses passados NÃO estão fechados
+  const mesesAnterioresAbertos: string[] = [];
+  Array.from(mesesAnteriores)
+    .sort()
+    .forEach((mes) => {
+      const status = mapaStatus.get(mes);
+      // Se não há documento de controle ou seu status não for 'FECHADO',
+      // o mês passado é considerado pendente de fechamento.
+      if (status !== 'FECHADO') {
+        mesesAnterioresAbertos.push(mes);
+      }
+    });
+
+  const temPendenciaAnterior = mesesAnterioresAbertos.length > 0;
+  const isReaberto = statusCompetenciaAtual === 'REABERTO';
+
+  if (temPendenciaAnterior || isReaberto) {
+    return {
+      cor: 'AMARELO',
+      isFechado: false,
+      temPendenciaAnterior,
+      mesesAnterioresAbertos,
+    };
+  }
+
+  return {
+    cor: 'VERDE',
+    isFechado: false,
+    temPendenciaAnterior: false,
+    mesesAnterioresAbertos: [],
+  };
+}

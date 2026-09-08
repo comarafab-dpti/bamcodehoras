@@ -528,10 +528,14 @@ export const firestoreService = {
   },
 
   // 1.2/1.3: One-time fetch with local cache for small collections (no onSnapshot listener)
-  async getAdmins(): Promise<AdminUser[]> {
+  async getAdmins(forceRefresh = false): Promise<AdminUser[]> {
     const path = COLLECTIONS.ADMIN_USERS;
-    const cached = localCache.getCache<AdminUser[]>(CACHE_KEYS.ADMIN_USERS);
-    if (cached) return cached;
+    if (!forceRefresh) {
+      const cached = localCache.getCache<AdminUser[]>(CACHE_KEYS.ADMIN_USERS);
+      if (cached) return cached;
+    } else {
+      localCache.invalidate(CACHE_KEYS.ADMIN_USERS);
+    }
     try {
       const snapshot = await getDocs(query(collection(db, path), limit(200)));
       const list: AdminUser[] = [];

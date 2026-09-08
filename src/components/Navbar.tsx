@@ -256,24 +256,26 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="2xl:hidden">Dispensas</span>
             </button>
 
-            {/* Aba 6: Relatórios */}
-            <button
-              onClick={() => onSelectTab('relatorios')}
-              className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
-                activeTab === 'relatorios'
-                  ? isDark 
-                    ? 'bg-[#243756] text-purple-400 border border-[#335075] shadow-xs' 
-                    : 'bg-purple-50 text-purple-700 border border-purple-200 font-bold shadow-xs'
-                  : isDark 
-                    ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-              title="Gerador de Relatórios Executivos Consolidados"
-            >
-              <FileText className="w-4 h-4 text-purple-400 shrink-0" />
-              <span className="hidden xl:inline">Relatórios</span>
-              <span className="xl:hidden">Relat.</span>
-            </button>
+            {/* Aba 6: Relatórios - Oculto para Aux de DA */}
+            {!isAuxDA && (
+              <button
+                onClick={() => onSelectTab('relatorios')}
+                className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                  activeTab === 'relatorios'
+                    ? isDark 
+                      ? 'bg-[#243756] text-purple-400 border border-[#335075] shadow-xs' 
+                      : 'bg-purple-50 text-purple-700 border border-purple-200 font-bold shadow-xs'
+                    : isDark 
+                      ? 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#16243D]' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Gerador de Relatórios Executivos Consolidados"
+              >
+                <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+                <span className="hidden xl:inline">Relatórios</span>
+                <span className="xl:hidden">Relat.</span>
+              </button>
+            )}
 
             {/* Aba 7: Manual */}
             <button
@@ -643,28 +645,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
-                  {/* 2.2 Relatórios */}
-                  <button
-                    onClick={() => {
-                      onSelectTab('relatorios');
-                      setIsSettingsOpen(false);
-                    }}
-                    className={`w-full px-3.5 py-2 text-xs text-left flex items-center gap-2.5 transition-colors active:scale-[0.98] cursor-pointer ${
-                      activeTab === 'relatorios'
-                        ? isDark ? 'bg-indigo-950/30 text-indigo-300' : 'bg-indigo-50 text-indigo-800'
-                        : isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold">Relatórios</div>
-                      <span className={`text-[10px] block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                        Extratos, auditoria e exportação
-                      </span>
-                    </div>
-                  </button>
+                  {/* 2.2 Relatórios - Oculto para Aux de DA */}
+                  {!isAuxDA && (
+                    <button
+                      onClick={() => {
+                        onSelectTab('relatorios');
+                        setIsSettingsOpen(false);
+                      }}
+                      className={`w-full px-3.5 py-2 text-xs text-left flex items-center gap-2.5 transition-colors active:scale-[0.98] cursor-pointer ${
+                        activeTab === 'relatorios'
+                          ? isDark ? 'bg-indigo-950/30 text-indigo-300' : 'bg-indigo-50 text-indigo-800'
+                          : isDark ? 'hover:bg-[#243756] text-[#E2E8F0]' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">Relatórios</div>
+                        <span className={`text-[10px] block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                          Extratos, auditoria e exportação
+                        </span>
+                      </div>
+                    </button>
+                  )}
 
                   {/* 2.2.1 Consulta de Dispensas e Faltas */}
                   <button
@@ -1008,16 +1012,18 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           Dispensas
         </button>
-        <button
-          onClick={() => onSelectTab('relatorios')}
-          className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
-            activeTab === 'relatorios'
-              ? isDark ? 'text-purple-400 font-bold bg-[#243756]' : 'text-purple-700 font-bold bg-purple-100'
-              : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          Relatórios
-        </button>
+        {!isAuxDA && (
+          <button
+            onClick={() => onSelectTab('relatorios')}
+            className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
+              activeTab === 'relatorios'
+                ? isDark ? 'text-purple-400 font-bold bg-[#243756]' : 'text-purple-700 font-bold bg-purple-100'
+                : isDark ? 'text-[#94A3B8] hover:text-[#E2E8F0]' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Relatórios
+          </button>
+        )}
         <button
           onClick={() => onSelectTab('arquitetura')}
           className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${

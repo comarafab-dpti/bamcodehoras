@@ -44,7 +44,10 @@ import {
   Sparkles,
   Printer,
   FileText,
-  Loader2
+  Loader2,
+  Mail,
+  Phone,
+  Smartphone
 } from 'lucide-react';
 import { InfoTooltip } from './InfoTooltip';
 import { IconButton } from './IconButton';
@@ -136,7 +139,11 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
     direction: 'asc',
   });
 
-  const [mobileExpandedMatricula, setMobileExpandedMatricula] = useState<string | null>(null);
+  const [expandedMatricula, setExpandedMatricula] = useState<string | null>(null);
+
+  const toggleExpandEmployee = (matricula: string) => {
+    setExpandedMatricula((prev) => (prev === matricula ? null : matricula));
+  };
 
   // Manual Employee Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -463,12 +470,12 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 const formattedSaldo = bal.saldoTotalHoras > 0 
                   ? `+${bal.saldoTotalHoras.toFixed(1)}h` 
                   : `${bal.saldoTotalHoras.toFixed(1)}h`;
-                const isExpanded = mobileExpandedMatricula === emp.matricula;
+                const isExpanded = expandedMatricula === emp.matricula;
 
                 return (
                   <div 
                     key={emp.matricula} 
-                    className={`rounded-lg border shadow-xs transition-all ${
+                    className={`rounded-xl border shadow-xs transition-all ${
                       isDark 
                         ? 'bg-[#16243D] border-[#243756] hover:border-blue-500/50' 
                         : 'bg-white border-slate-200 hover:border-blue-300'
@@ -476,129 +483,217 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   >
                     <button
                       type="button"
-                      onClick={() => setMobileExpandedMatricula(isExpanded ? null : emp.matricula)}
+                      onClick={() => toggleExpandEmployee(emp.matricula)}
                       aria-expanded={isExpanded}
                       className="w-full p-3 flex justify-between items-center text-left cursor-pointer active:scale-[0.99] transition-all"
                     >
                       <div className="min-w-0 pr-3">
-                      <p className={`font-bold text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                        {emp.nome}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px]">
-                        <span className={`font-mono font-medium ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
-                          #{emp.matricula}
-                        </span>
-                        <span className="opacity-40">•</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-                          isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
-                        }`}>
-                          {org.sedeCodigo}
-                        </span>
-                        <span className={`truncate max-w-28 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {org.lotacaoNome}
-                        </span>
-                        {org.temSetor && (
-                          <>
-                            <span className="opacity-40">•</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
-                              isDark ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
-                            }`}>
-                              {org.setorSigla || org.setorNome}
-                            </span>
-                          </>
-                        )}
-                        {org.isDeslocado && (
-                          <>
-                            <span className="opacity-40">•</span>
-                            <span className={`text-[10px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                              {org.localTrabalhoNome}
-                            </span>
-                          </>
-                        )}
-                      </div>
+                        <p className={`font-bold text-sm truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                          {emp.nome}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px]">
+                          <span className={`font-mono font-medium ${isDark ? 'text-[#94A3B8]' : 'text-gray-500'}`}>
+                            #{emp.matricula}
+                          </span>
+                          <span className="opacity-40">•</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                            isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}>
+                            {org.sedeCodigo}
+                          </span>
+                          <span className={`truncate max-w-28 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {org.lotacaoNome}
+                          </span>
+                          {org.temSetor && (
+                            <>
+                              <span className="opacity-40">•</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                                isDark ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
+                              }`}>
+                                {org.setorSigla || org.setorNome}
+                              </span>
+                            </>
+                          )}
+                          {org.isDeslocado && (
+                            <>
+                              <span className="opacity-40">•</span>
+                              <span className={`text-[10px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                {org.localTrabalhoNome}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                      <div className={`px-3 py-1 rounded-full font-bold text-sm font-mono ${
-                      isPositivo 
-                        ? isDark 
-                          ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60' 
-                          : 'bg-green-100 text-green-700 border border-green-200' 
-                        : isDark 
-                          ? 'bg-red-950/80 text-red-400 border border-red-800/60' 
-                          : 'bg-red-100 text-red-700 border border-red-200'
-                    }`}>
-                      {formattedSaldo}
-                    </div>
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        <div className={`px-3 py-1 rounded-full font-bold text-sm font-mono ${
+                          isPositivo 
+                            ? isDark 
+                              ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60' 
+                              : 'bg-green-100 text-green-700 border border-green-200' 
+                            : isDark 
+                              ? 'bg-red-950/80 text-red-400 border border-red-800/60' 
+                              : 'bg-red-100 text-red-700 border border-red-200'
+                        }`}>
+                          {formattedSaldo}
+                        </div>
+                        <div className={`p-1 rounded-lg border ${
+                          isExpanded
+                            ? isDark ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border-blue-200'
+                            : isDark ? 'text-slate-400 border-transparent' : 'text-slate-400 border-transparent'
+                        }`}>
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-400' : ''}`} />
+                        </div>
                       </div>
                     </button>
+
                     {isExpanded && (
-                      <div className={`px-3 pb-3 pt-2 border-t ${isDark ? 'border-[#243756]' : 'border-slate-200'}`}>
-                        <div className="space-y-2.5 mb-3">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Função
-                              </div>
-                              <div className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                {emp.funcao || 'Não informado'}
-                              </div>
+                      <div className={`px-3.5 pb-3.5 pt-2 border-t space-y-3 ${isDark ? 'border-[#243756] bg-[#0F1B33]/60' : 'border-slate-200 bg-slate-50/60'}`}>
+                        {/* Seção de Contatos Destacada */}
+                        <div className={`p-3 rounded-xl border space-y-2.5 ${
+                          isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200 shadow-xs'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                              <Phone className="w-3.5 h-3.5" />
+                              <span>Contatos do Colaborador</span>
                             </div>
-                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Status
-                              </div>
-                              <div className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                {emp.status || '—'}
-                              </div>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(emp);
+                              }}
+                              className="text-[10px] font-bold text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              <span>Editar</span>
+                            </button>
                           </div>
 
-                          <div className="grid grid-cols-1 gap-2">
-                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                E-mail
-                              </div>
-                              <div className={`text-xs break-all ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                {emp.email || 'Não informado'}
+                          <div className="space-y-2 text-xs">
+                            {/* E-mail */}
+                            <div className="flex items-start gap-2">
+                              <Mail className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <span className={`text-[10px] uppercase font-bold block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                  E-mail:
+                                </span>
+                                {emp.email ? (
+                                  <a 
+                                    href={`mailto:${emp.email}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="font-semibold text-blue-400 hover:underline break-all block"
+                                  >
+                                    {emp.email}
+                                  </a>
+                                ) : (
+                                  <span className={`italic text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    Não informado
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Telefone
-                              </div>
-                              <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                {emp.telefone || emp.celular || 'Não informado'}
-                              </div>
-                            </div>
-                          </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Lotação
-                              </div>
-                              <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                {org.lotacaoNome || '—'}
-                              </div>
-                            </div>
-                            <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'}`}>
-                              <div className={`text-[10px] uppercase tracking-wide mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                Local
-                              </div>
-                              <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                                {org.localTrabalhoNome || '—'}
+                            {/* Telefone */}
+                            <div className="flex items-start gap-2">
+                              <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                              <div className="min-w-0 flex-1">
+                                <span className={`text-[10px] uppercase font-bold block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                  Telefone / Celular:
+                                </span>
+                                {emp.telefone || emp.celular ? (
+                                  <a 
+                                    href={`tel:${emp.telefone || emp.celular}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="font-semibold text-emerald-400 hover:underline block"
+                                  >
+                                    {emp.telefone || emp.celular}
+                                  </a>
+                                ) : (
+                                  <span className={`italic text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    Não informado
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center justify-end gap-1.5">
+
+                        {/* Informações Funcionais */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                            <div className={`text-[10px] uppercase tracking-wide mb-0.5 font-bold ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                              Função
+                            </div>
+                            <div className={`font-medium truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                              {emp.funcao || 'Não informado'}
+                            </div>
+                          </div>
+
+                          <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                            <div className={`text-[10px] uppercase tracking-wide mb-0.5 font-bold ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                              Status
+                            </div>
+                            <div className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                              {emp.status || 'Ativo'}
+                            </div>
+                          </div>
+
+                          <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                            <div className={`text-[10px] uppercase tracking-wide mb-0.5 font-bold ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                              Lotação
+                            </div>
+                            <div className={`truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                              {org.sedeCodigo} • {org.lotacaoNome || '—'}
+                            </div>
+                          </div>
+
+                          <div className={`rounded-lg border p-2 ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                            <div className={`text-[10px] uppercase tracking-wide mb-0.5 font-bold ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                              Local de Trabalho
+                            </div>
+                            <div className={`truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                              {org.localTrabalhoNome || '—'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botões de Ação para o Colaborador */}
+                        <div className="flex items-center justify-end gap-1.5 pt-1">
                           {onOpenSptfDispensa && (
-                            <IconButton icon={FileText} variant="ghost" size="xs" tooltip={`Emitir Dispensa de Expediente para ${emp.nome}`} aria-label={`Dispensa de ${emp.nome}`} onClick={(event) => { event.stopPropagation(); onOpenSptfDispensa(emp.matricula); }} />
+                            <IconButton 
+                              icon={FileText} 
+                              variant="ghost" 
+                              size="xs" 
+                              tooltip={`Emitir Dispensa de Expediente para ${emp.nome}`} 
+                              aria-label={`Dispensa de ${emp.nome}`} 
+                              onClick={(event) => { event.stopPropagation(); onOpenSptfDispensa(emp.matricula); }} 
+                            />
                           )}
-                          <IconButton icon={PlusCircle} variant="subtle" size="xs" tooltip={`Novo Lançamento para ${emp.nome}`} aria-label={`Lançar horas para ${emp.nome}`} onClick={(event) => { event.stopPropagation(); onQuickNewEntry(emp.matricula); }} />
-                          <IconButton icon={Eye} variant="secondary" size="xs" tooltip={`Extrato Completo de ${emp.nome}`} aria-label={`Ver extrato de ${emp.nome}`} onClick={(event) => { event.stopPropagation(); onViewStatement(emp.matricula); }} />
-                          <IconButton icon={Edit2} variant="ghost" size="xs" tooltip={`Editar Cadastro de ${emp.nome}`} aria-label={`Editar ${emp.nome}`} onClick={(event) => { event.stopPropagation(); handleOpenEditModal(emp); }} />
+                          <IconButton 
+                            icon={PlusCircle} 
+                            variant="subtle" 
+                            size="xs" 
+                            tooltip={`Novo Lançamento para ${emp.nome}`} 
+                            aria-label={`Lançar horas para ${emp.nome}`} 
+                            onClick={(event) => { event.stopPropagation(); onQuickNewEntry(emp.matricula); }} 
+                          />
+                          <IconButton 
+                            icon={Eye} 
+                            variant="secondary" 
+                            size="xs" 
+                            tooltip={`Extrato Completo de ${emp.nome}`} 
+                            aria-label={`Ver extrato de ${emp.nome}`} 
+                            onClick={(event) => { event.stopPropagation(); onViewStatement(emp.matricula); }} 
+                          />
+                          <IconButton 
+                            icon={Edit2} 
+                            variant="ghost" 
+                            size="xs" 
+                            tooltip={`Editar Cadastro de ${emp.nome}`} 
+                            aria-label={`Editar ${emp.nome}`} 
+                            onClick={(event) => { event.stopPropagation(); handleOpenEditModal(emp); }} 
+                          />
                         </div>
                       </div>
                     )}
@@ -933,6 +1028,11 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                   <tr className={`text-[10px] uppercase font-bold border-b tracking-wider select-none ${
                     isDark ? 'text-[#94A3B8] border-[#243756]' : 'text-slate-600 border-slate-200'
                   }`}>
+                    {/* 0. Expandir Detalhes */}
+                    <th className="py-3 px-3 w-11 text-center">
+                      <span className="sr-only">Expandir</span>
+                    </th>
+
                     {/* 1. Matrícula */}
                     <th 
                       onClick={() => handleSort('matricula')}
@@ -1041,7 +1141,14 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                       </div>
                     </th>
 
-                    <th className="py-3 px-4 text-right">Ações</th>
+                    {/* 11. Ações (Fixas à direita para nunca sumirem) */}
+                    <th className={`py-3 px-4 text-right sticky right-0 z-20 ${
+                      isDark 
+                        ? 'bg-[#0F1B33] border-l border-[#243756] shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.5)]' 
+                        : 'bg-slate-50 border-l border-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]'
+                    }`}>
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${
@@ -1049,7 +1156,7 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                 }`}>
                   {filteredAndSortedEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                      <td colSpan={11} className={`py-12 text-center text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                         <div className="flex flex-col items-center justify-center gap-2">
                           <AlertCircle className="w-6 h-6 text-gray-500" />
                           <p className="font-semibold text-sm">Nenhum colaborador localizado com os filtros selecionados.</p>
@@ -1074,182 +1181,415 @@ export const EmployeeManagement: React.FC<EmployeeManagementProps> = ({
                     </tr>
                   ) : (
                     filteredAndSortedEmployees.map(({ emp, bal, org }) => {
+                      const isExpanded = expandedMatricula === emp.matricula;
                       return (
-                        <tr key={emp.id} className={`transition-colors ${isDark ? 'hover:bg-[#1E3252]' : 'hover:bg-slate-50/80'}`}>
-                          <td className={`py-3.5 px-4 font-mono font-semibold whitespace-nowrap ${
-                            isDark ? 'text-[#94A3B8]' : 'text-slate-600'
+                        <React.Fragment key={emp.id}>
+                          <tr className={`transition-colors group ${
+                            isExpanded
+                              ? isDark ? 'bg-[#1E3252]/60' : 'bg-blue-50/50'
+                              : isDark ? 'hover:bg-[#1E3252]' : 'hover:bg-slate-50/80'
                           }`}>
-                            #{emp.matricula}
-                          </td>
-                          <td className="py-3.5 px-4 font-sans">
-                            <div className="flex items-center gap-3">
-                              {emp.avatarUrl || emp.url_foto_perfil ? (
-                                <img
-                                  src={emp.avatarUrl || emp.url_foto_perfil}
-                                  alt={emp.nome}
-                                  className={`w-8 h-8 rounded-full object-cover border shrink-0 ${
-                                    isDark ? 'border-[#335075]' : 'border-slate-200'
-                                  }`}
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                                  isDark 
-                                    ? 'bg-[#243756] border-[#335075] text-blue-400' 
-                                    : 'bg-blue-50 border-blue-200 text-blue-700'
-                                }`}>
-                                  {emp.nome.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-                                </div>
-                              )}
-                              <div>
-                                <div className={`font-semibold text-xs ${isDark ? 'text-[#E2E8F0]' : 'text-slate-900'}`}>
-                                  {emp.nome}
-                                </div>
-                                {emp.email && (
-                                  <div className={`text-[11px] font-mono ${isDark ? 'text-[#64748B]' : 'text-slate-500'}`}>
-                                    {emp.email}
+                            {/* 0. Botão Expandir */}
+                            <td className="py-3.5 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleExpandEmployee(emp.matricula)}
+                                title={isExpanded ? "Recolher detalhes" : "Expandir contatos e dados do colaborador"}
+                                aria-label={isExpanded ? `Recolher ${emp.nome}` : `Expandir ${emp.nome}`}
+                                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                  isExpanded
+                                    ? isDark
+                                      ? 'bg-blue-600/25 text-blue-300 border-blue-500/40'
+                                      : 'bg-blue-100 text-blue-700 border-blue-200'
+                                    : isDark
+                                      ? 'text-slate-400 hover:text-white hover:bg-slate-800/80 border-transparent'
+                                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-transparent'
+                                }`}
+                              >
+                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-400' : ''}`} />
+                              </button>
+                            </td>
+
+                            {/* 1. Matrícula (Clicável para expandir) */}
+                            <td 
+                              onClick={() => toggleExpandEmployee(emp.matricula)}
+                              className={`py-3.5 px-4 font-mono font-semibold whitespace-nowrap cursor-pointer ${
+                                isDark ? 'text-[#94A3B8] hover:text-blue-400' : 'text-slate-600 hover:text-blue-600'
+                              }`}
+                              title="Clique para expandir contatos do colaborador"
+                            >
+                              #{emp.matricula}
+                            </td>
+
+                            {/* 2. Nome (Clicável para expandir) */}
+                            <td 
+                              onClick={() => toggleExpandEmployee(emp.matricula)}
+                              className="py-3.5 px-4 font-sans cursor-pointer"
+                              title="Clique para expandir contatos do colaborador"
+                            >
+                              <div className="flex items-center gap-3">
+                                {emp.avatarUrl || emp.url_foto_perfil ? (
+                                  <img
+                                    src={emp.avatarUrl || emp.url_foto_perfil}
+                                    alt={emp.nome}
+                                    className={`w-8 h-8 rounded-full object-cover border shrink-0 ${
+                                      isDark ? 'border-[#335075]' : 'border-slate-200'
+                                    }`}
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                                    isDark 
+                                      ? 'bg-[#243756] border-[#335075] text-blue-400' 
+                                      : 'bg-blue-50 border-blue-200 text-blue-700'
+                                  }`}>
+                                    {emp.nome.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                                   </div>
                                 )}
+                                <div>
+                                  <div className={`font-semibold text-xs ${isDark ? 'text-[#E2E8F0] group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'} transition-colors`}>
+                                    {emp.nome}
+                                  </div>
+                                  {emp.email ? (
+                                    <div className={`text-[11px] font-mono flex items-center gap-1 ${isDark ? 'text-[#64748B]' : 'text-slate-500'}`}>
+                                      <Mail className="w-3 h-3 text-blue-400 shrink-0" />
+                                      <span className="truncate max-w-xs">{emp.email}</span>
+                                    </div>
+                                  ) : (emp.telefone || emp.celular) ? (
+                                    <div className={`text-[11px] font-mono flex items-center gap-1 ${isDark ? 'text-[#64748B]' : 'text-slate-500'}`}>
+                                      <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
+                                      <span>{emp.telefone || emp.celular}</span>
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                            {emp.funcao}
-                          </td>
+                            </td>
+                            <td className={`py-3.5 px-4 ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
+                              {emp.funcao}
+                            </td>
 
-                          {/* Lotação (De onde ele é) */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 font-bold font-mono rounded text-[10px] border shrink-0 ${
-                                isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
+                            {/* Lotação (De onde ele é) */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 font-bold font-mono rounded text-[10px] border shrink-0 ${
+                                  isDark ? 'bg-[#243756] text-blue-400 border-[#335075]' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                }`}>
+                                  {org.sedeCodigo}
+                                </span>
+                                <span className={`text-xs font-medium ${isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}`}>
+                                  {org.lotacaoNome}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Local de Trabalho (Onde está trabalhando) */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-xs ${isDark ? 'text-[#E2E8F0]' : 'text-slate-700'}`}>
+                                  {org.localTrabalhoNome}
+                                </span>
+                                {org.isEmCanteiro && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                                    isDark ? 'bg-amber-950/40 text-amber-400 border-amber-800/40' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}>
+                                    Canteiro
+                                  </span>
+                                )}
+                                {org.isDeslocado && !org.isEmCanteiro && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
+                                    isDark ? 'bg-blue-950/40 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  }`}>
+                                    Deslocado
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Setor (somente sigla para preservar espaço das ações) */}
+                            <td className="py-3.5 px-4 whitespace-nowrap w-20">
+                              {org.temSetor ? (
+                                <span className={`inline-block max-w-16 truncate px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                                  isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
+                                }`} title={org.setorSigla || 'Setor'}>
+                                  {org.setorSigla || '—'}
+                                </span>
+                              ) : (
+                                <span className={`text-xs font-mono ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                  —
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="flex flex-col gap-1 items-start">
+                                <span className={`px-2 py-0.5 rounded font-semibold text-[10px] border ${
+                                  emp.status === 'Ativo' 
+                                    ? isDark ? 'bg-emerald-950/40 text-green-400 border-emerald-800/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : emp.status === 'Férias'
+                                    ? isDark ? 'bg-amber-950/40 text-amber-400 border-amber-800/40' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : isDark ? 'bg-purple-950/40 text-purple-300 border-purple-800/40' : 'bg-purple-50 text-purple-700 border-purple-200'
+                                }`}>
+                                  {emp.status}
+                                </span>
+                                {emp.dataInicioStatus && emp.dataFimStatus && (
+                                  <span className={`text-[9px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                    {emp.dataInicioStatus} a {emp.dataFimStatus}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className={`font-bold text-xs ${
+                                bal.saldoTotalHoras > 0 
+                                  ? isDark ? 'text-green-400' : 'text-emerald-600'
+                                  : bal.saldoTotalHoras < 0 
+                                  ? isDark ? 'text-red-400' : 'text-red-600'
+                                  : isDark ? 'text-[#94A3B8]' : 'text-slate-500'
                               }`}>
-                                {org.sedeCodigo}
-                              </span>
-                              <span className={`text-xs font-medium ${isDark ? 'text-[#E2E8F0]' : 'text-slate-800'}`}>
-                                {org.lotacaoNome}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Local de Trabalho (Onde está trabalhando) */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-xs ${isDark ? 'text-[#E2E8F0]' : 'text-slate-700'}`}>
-                                {org.localTrabalhoNome}
-                              </span>
-                              {org.isEmCanteiro && (
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                                  isDark ? 'bg-amber-950/40 text-amber-400 border-amber-800/40' : 'bg-amber-50 text-amber-700 border-amber-200'
-                                }`}>
-                                  Canteiro
-                                </span>
-                              )}
-                              {org.isDeslocado && !org.isEmCanteiro && (
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
-                                  isDark ? 'bg-blue-950/40 text-blue-300 border-blue-800/40' : 'bg-blue-50 text-blue-700 border-blue-200'
-                                }`}>
-                                  Deslocado
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Setor (somente sigla para preservar espaço das ações) */}
-                          <td className="py-3.5 px-4 whitespace-nowrap w-20">
-                            {org.temSetor ? (
-                              <span className={`inline-block max-w-16 truncate px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                                isDark ? 'bg-slate-800/80 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
-                              }`} title={org.setorSigla || 'Setor'}>
-                                {org.setorSigla || '—'}
-                              </span>
-                            ) : (
-                              <span className={`text-xs font-mono ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                                —
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="flex flex-col gap-1 items-start">
-                              <span className={`px-2 py-0.5 rounded font-semibold text-[10px] border ${
-                                emp.status === 'Ativo' 
+                                {formatHoursDecimal(bal.saldoTotalHoras)}
+                              </div>
+                              <div className={`text-[10px] ${isDark ? 'text-[#64748B]' : 'text-slate-400'}`}>
+                                {formatHoursToDays(bal.saldoTotalHoras)}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <span className={`px-2 py-0.5 rounded font-bold text-[10px] border ${
+                                bal.status === 'CREDOR'
                                   ? isDark ? 'bg-emerald-950/40 text-green-400 border-emerald-800/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : emp.status === 'Férias'
-                                  ? isDark ? 'bg-amber-950/40 text-amber-400 border-amber-800/40' : 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : isDark ? 'bg-purple-950/40 text-purple-300 border-purple-800/40' : 'bg-purple-50 text-purple-700 border-purple-200'
+                                  : bal.status === 'DEVEDOR'
+                                  ? isDark ? 'bg-red-950/40 text-red-400 border-red-800/40' : 'bg-red-50 text-red-700 border-red-200'
+                                  : isDark ? 'bg-[#243756] text-[#94A3B8] border-[#335075]' : 'bg-slate-100 text-slate-600 border-slate-200'
                               }`}>
-                                {emp.status}
+                                {bal.status}
                               </span>
-                              {emp.dataInicioStatus && emp.dataFimStatus && (
-                                <span className={`text-[9px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-                                  {emp.dataInicioStatus} a {emp.dataFimStatus}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                            <div className={`font-bold text-xs ${
-                              bal.saldoTotalHoras > 0 
-                                ? isDark ? 'text-green-400' : 'text-emerald-600'
-                                : bal.saldoTotalHoras < 0 
-                                ? isDark ? 'text-red-400' : 'text-red-600'
-                                : isDark ? 'text-[#94A3B8]' : 'text-slate-500'
+                            </td>
+
+                            {/* 11. Ações (Sticky Right para nunca sumirem da visualização) */}
+                            <td className={`py-3.5 px-4 text-right whitespace-nowrap font-sans sticky right-0 z-10 transition-colors ${
+                              isDark 
+                                ? 'bg-[#16243D] group-hover:bg-[#1E3252] border-l border-[#243756] shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.5)]' 
+                                : 'bg-white group-hover:bg-slate-50 border-l border-slate-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]'
                             }`}>
-                              {formatHoursDecimal(bal.saldoTotalHoras)}
-                            </div>
-                            <div className={`text-[10px] ${isDark ? 'text-[#64748B]' : 'text-slate-400'}`}>
-                              {formatHoursToDays(bal.saldoTotalHoras)}
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] border ${
-                              bal.status === 'CREDOR'
-                                ? isDark ? 'bg-emerald-950/40 text-green-400 border-emerald-800/40' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : bal.status === 'DEVEDOR'
-                                ? isDark ? 'bg-red-950/40 text-red-400 border-red-800/40' : 'bg-red-50 text-red-700 border-red-200'
-                                : isDark ? 'bg-[#243756] text-[#94A3B8] border-[#335075]' : 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}>
-                              {bal.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-right whitespace-nowrap font-sans">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {onOpenSptfDispensa && (
+                              <div className="flex items-center justify-end gap-1.5">
+                                {onOpenSptfDispensa && (
+                                  <IconButton
+                                    icon={FileText}
+                                    variant="ghost"
+                                    size="xs"
+                                    tooltip={`Emitir Dispensa de Expediente para ${emp.nome}`}
+                                    aria-label={`Dispensa de ${emp.nome}`}
+                                    onClick={() => onOpenSptfDispensa(emp.matricula)}
+                                  />
+                                )}
                                 <IconButton
-                                  icon={FileText}
+                                  icon={PlusCircle}
+                                  variant="subtle"
+                                  size="xs"
+                                  tooltip={`Novo Lançamento para ${emp.nome}`}
+                                  aria-label={`Lançar horas para ${emp.nome}`}
+                                  onClick={() => onQuickNewEntry(emp.matricula)}
+                                />
+                                <IconButton
+                                  icon={Eye}
+                                  variant="secondary"
+                                  size="xs"
+                                  tooltip={`Extrato Completo de ${emp.nome}`}
+                                  aria-label={`Ver extrato de ${emp.nome}`}
+                                  onClick={() => onViewStatement(emp.matricula)}
+                                />
+                                <IconButton
+                                  icon={Edit2}
                                   variant="ghost"
                                   size="xs"
-                                  tooltip={`Emitir Dispensa de Expediente para ${emp.nome}`}
-                                  aria-label={`Dispensa de ${emp.nome}`}
-                                  onClick={() => onOpenSptfDispensa(emp.matricula)}
+                                  tooltip={`Editar Cadastro de ${emp.nome}`}
+                                  aria-label={`Editar ${emp.nome}`}
+                                  onClick={() => handleOpenEditModal(emp)}
                                 />
-                              )}
-                              <IconButton
-                                icon={PlusCircle}
-                                variant="subtle"
-                                size="xs"
-                                tooltip={`Novo Lançamento para ${emp.nome}`}
-                                aria-label={`Lançar horas para ${emp.nome}`}
-                                onClick={() => onQuickNewEntry(emp.matricula)}
-                              />
-                              <IconButton
-                                icon={Eye}
-                                variant="secondary"
-                                size="xs"
-                                tooltip={`Extrato Completo de ${emp.nome}`}
-                                aria-label={`Ver extrato de ${emp.nome}`}
-                                onClick={() => onViewStatement(emp.matricula)}
-                              />
-                              <IconButton
-                                icon={Edit2}
-                                variant="ghost"
-                                size="xs"
-                                tooltip={`Editar Cadastro de ${emp.nome}`}
-                                aria-label={`Editar ${emp.nome}`}
-                                onClick={() => handleOpenEditModal(emp)}
-                              />
-                            </div>
-                          </td>
-                        </tr>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* PAINEL EXPANDIDO COM DADOS DE CONTATO (E-MAIL E TELEFONE) */}
+                          {isExpanded && (
+                            <tr className={`border-b ${isDark ? 'bg-[#0B1426]/95 border-[#243756]' : 'bg-slate-50/95 border-slate-200'}`}>
+                              <td colSpan={11} className="p-4 sm:p-5">
+                                <div className="space-y-4 max-w-5xl">
+                                  {/* Card Principal: Contatos com Links Diretos e Ação de Edição */}
+                                  <div className={`p-4 rounded-xl border ${
+                                    isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200 shadow-xs'
+                                  }`}>
+                                    <div className="flex items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-inherit">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                                          <Phone className="w-4 h-4 text-emerald-400" />
+                                        </div>
+                                        <div>
+                                          <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                            Dados de Contato & Comunicação
+                                          </h4>
+                                          <p className={`text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                            Canais de comunicação direta do servidor #{emp.matricula} — {emp.nome}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditModal(emp)}
+                                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border border-blue-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                        <span>Editar Contatos</span>
+                                      </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                                      {/* E-mail */}
+                                      <div className={`p-3 rounded-lg border ${
+                                        isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'
+                                      }`}>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                            E-mail Institucional / Pessoal
+                                          </span>
+                                          <Mail className="w-4 h-4 text-blue-400" />
+                                        </div>
+                                        {emp.email ? (
+                                          <a
+                                            href={`mailto:${emp.email}`}
+                                            title="Clique para enviar e-mail"
+                                            className="text-xs font-semibold text-blue-400 hover:underline flex items-center gap-1.5 break-all mt-1"
+                                          >
+                                            <span>{emp.email}</span>
+                                          </a>
+                                        ) : (
+                                          <div className="flex items-center justify-between mt-1">
+                                            <span className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                              Não informado
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenEditModal(emp)}
+                                              className="text-[10px] font-bold text-blue-400 hover:underline cursor-pointer"
+                                            >
+                                              + Cadastrar
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Telefone Principal */}
+                                      <div className={`p-3 rounded-lg border ${
+                                        isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'
+                                      }`}>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                            Telefone Principal
+                                          </span>
+                                          <Phone className="w-4 h-4 text-emerald-400" />
+                                        </div>
+                                        {emp.telefone ? (
+                                          <a
+                                            href={`tel:${emp.telefone}`}
+                                            title="Clique para ligar"
+                                            className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-1.5 mt-1"
+                                          >
+                                            <span>{emp.telefone}</span>
+                                          </a>
+                                        ) : (
+                                          <div className="flex items-center justify-between mt-1">
+                                            <span className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                              Não informado
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenEditModal(emp)}
+                                              className="text-[10px] font-bold text-blue-400 hover:underline cursor-pointer"
+                                            >
+                                              + Cadastrar
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Celular / WhatsApp */}
+                                      <div className={`p-3 rounded-lg border ${
+                                        isDark ? 'bg-[#0F1B33] border-[#243756]' : 'bg-slate-50 border-slate-200'
+                                      }`}>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                          <span className={`text-[10px] font-bold uppercase ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                            Celular / WhatsApp
+                                          </span>
+                                          <Smartphone className="w-4 h-4 text-emerald-400" />
+                                        </div>
+                                        {(emp.celular || emp.telefone) ? (
+                                          <a
+                                            href={`tel:${emp.celular || emp.telefone}`}
+                                            title="Clique para ligar"
+                                            className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-1.5 mt-1"
+                                          >
+                                            <span>{emp.celular || emp.telefone}</span>
+                                          </a>
+                                        ) : (
+                                          <div className="flex items-center justify-between mt-1">
+                                            <span className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                              Não informado
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenEditModal(emp)}
+                                              className="text-[10px] font-bold text-blue-400 hover:underline cursor-pointer"
+                                            >
+                                              + Cadastrar
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Informações Funcionais Detalhadas */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                                      <span className={`text-[10px] font-bold uppercase block mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                        Lotação Administrativa
+                                      </span>
+                                      <p className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {org.sedeCodigo} • {org.lotacaoNome}
+                                      </p>
+                                    </div>
+
+                                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                                      <span className={`text-[10px] font-bold uppercase block mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                        Local de Trabalho
+                                      </span>
+                                      <p className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {org.localTrabalhoNome} {org.isEmCanteiro ? '(Canteiro)' : ''}
+                                      </p>
+                                    </div>
+
+                                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                                      <span className={`text-[10px] font-bold uppercase block mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                        Setor / Seção
+                                      </span>
+                                      <p className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {org.setorNome || org.setorSigla || 'Geral / Não atribuído'}
+                                      </p>
+                                    </div>
+
+                                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-[#16243D] border-[#243756]' : 'bg-white border-slate-200'}`}>
+                                      <span className={`text-[10px] font-bold uppercase block mb-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                                        Situação Contratual
+                                      </span>
+                                      <p className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {emp.status} {emp.dataInicioStatus ? `(${emp.dataInicioStatus} a ${emp.dataFimStatus || 'atual'})` : ''}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })
                   )}

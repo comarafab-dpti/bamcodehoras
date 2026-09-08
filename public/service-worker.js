@@ -8,7 +8,7 @@
  * - APIs / Firestore / Auth: BYPASS TOTAL (Network-Only sem cache de dados sensíveis)
  */
 
-const CACHE_NAME = 'comara-pwa-v1.1.0';
+const CACHE_NAME = 'comara-pwa-v1.2.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -16,6 +16,7 @@ const STATIC_ASSETS = [
   '/comara-logo.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
+  '/pwa-maskable-192x192.png',
   '/pwa-maskable-512x512.png',
   '/apple-touch-icon.png',
   '/favicon.ico',
