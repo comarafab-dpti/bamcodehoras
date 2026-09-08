@@ -1,65 +1,67 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // =========================================================================
-    // FUNÇÕES AUXILIARES — Autenticação, papéis e tenancy
-    // =========================================================================
+    // ============================================================
+    // 1. AUTENTICAÇÃO
+    // ============================================================
 
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function userEmail() {
-      return isAuthenticated() && request.auth.token.email != null
+      return isAuthenticated()
+        && request.auth.token.email != null
         ? request.auth.token.email.lower()
         : '';
     }
 
-    // E-mails master de Super Admin (alinhado a authService.isMasterAdminEmail)
-    function isMasterEmail() {
-      return isAuthenticated() && (
-        userEmail() == 'coari.comara@gmail.com' ||
-        userEmail() == 'comarafab@gmail.com' ||
-        userEmail().matches('.*juliocesar.*') || // Alinhado a authService.isMasterAdminEmail
-        userEmail() == 'admin@comara.mil.br' ||
-        userEmail() == 'admin@comara.gov.br' ||
-        userEmail().matches('.*@comara\\.mil\\.br$') ||
-        userEmail().matches('.*@comara\\.aer\\.mil\\.br$') ||
-        userEmail().matches('.*@comara\\.gov\\.br$')
-      );
-    }
+    // ============================================================
+    // 2. ADMIN USERS
+    // ============================================================
 
     function adminRef() {
       return /databases/$(database)/documents/admin_users/$(userEmail());
     }
 
     function hasAdminDoc() {
-      return isAuthenticated() && exists(adminRef());
+      return isAuthenticated() && userEmail() != '' && exists(adminRef());
     }
 
     function adminData() {
       return get(adminRef()).data;
     }
 
-    // Role bruta persistida (nivelAcesso tem precedência sobre role)
     function rawRole() {
       return hasAdminDoc()
-        ? (adminData().nivelAcesso != null
-            ? string(adminData().nivelAcesso)
-            : (adminData().role != null ? string(adminData().role) : ''))
+        ? (
+            adminData().get('nivelAcesso', null) != null
+              ? string(adminData().get('nivelAcesso'))
+              : (
+                  adminData().get('role', null) != null
+                    ? string(adminData().get('role'))
+                    : ''
+                )
+          )
         : '';
     }
 
     function adminStatus() {
       return hasAdminDoc()
-        ? (adminData().status != null
-            ? string(adminData().status)
-            : (adminData().ativo == false ? 'inativo' : 'ativo'))
+        ? (
+            adminData().get('status', null) != null
+              ? string(adminData().get('status'))
+              : (
+                  adminData().get('ativo', true) == false
+                    ? 'inativo'
+                    : 'ativo'
+                )
+          )
         : '';
     }
 
-    // Apenas admins ativos (status=ativo) com papel diferente de NENHUM
     function isAdminActive() {
       return hasAdminDoc()
         && adminStatus() == 'ativo'
@@ -67,251 +69,1023 @@ service cloud.firestore {
         && rawRole() != 'NENHUM';
     }
 
-    // Normaliza aliases legados para um dos 6 perfis canônicos
+    // ============================================================
+    // 3. NORMALIZAÇÃO DE PERFIS
+    // ============================================================
+
     function normalizeRole() {
       let r = rawRole();
-      return
-        r == 'SUPER_ADMIN' ? 'SUPER_ADMIN' :
-        r == 'RH_ADMIN' || r == 'GESTOR_RH' ? 'RH_ADMIN' :
-        r == 'GERENTE_CANTEIRO' || r == 'GERENTE' || r == 'GERENTE_CAMPO' ||
-        r == 'ROLE_GERENTE' || r == 'AUDITOR' ? 'GERENTE_CANTEIRO' :
-        r == 'CHEFE_CANTEIRO' || r == 'ENCARREGADO_CANTEIRO' ? 'CHEFE_CANTEIRO' :
-        r == 'CHEFE_DA' || r == 'ENCARREGADO_DA' ? 'CHEFE_DA' :
-        r == 'AUX_DA' || r == 'AUXILIAR_DA' ? 'AUX_DA' :
-        '';
+
+      return r == 'SUPER_ADMIN' ? 'SUPER_ADMIN' :
+        (r == 'RH_ADMIN' || r == 'GESTOR_RH') ? 'RH_ADMIN' :
+        (r == 'GERENTE_CANTEIRO' || r == 'GERENTE' || r == 'GERENTE_CAMPO' || r == 'ROLE_GERENTE') ? 'GERENTE_CANTEIRO' :
+        (r == 'CHEFE_CANTEIRO' || r == 'ENCARREGADO_CANTEIRO') ? 'CHEFE_CANTEIRO' :
+        (r == 'CHEFE_DA' || r == 'ENCARREGADO_DA') ? 'CHEFE_DA' :
+        (r == 'AUX_DA' || r == 'AUXILIAR_DA') ? 'AUX_DA' : '';
     }
+
+    // ============================================================
+    // 4. PERFIS
+    // ============================================================
 
     function isSuperAdmin() {
-      return isMasterEmail() || (isAdminActive() && normalizeRole() == 'SUPER_ADMIN');
+      return isAdminActive()
+        && normalizeRole() == 'SUPER_ADMIN';
     }
 
-    function isGestorRH() {
-      return isAdminActive() && normalizeRole() == 'RH_ADMIN';
+    function isRH() {
+      return isAdminActive()
+        && normalizeRole() == 'RH_ADMIN';
     }
 
-    // Acesso global: SUPER_ADMIN ou RH_ADMIN
     function isGlobalAdmin() {
-      return isSuperAdmin() || isGestorRH();
+      return isSuperAdmin() || isRH();
     }
 
-    function isGerenteCampo() {
-      return isAdminActive() && normalizeRole() == 'GERENTE_CANTEIRO';
+    function isGerenteCanteiro() {
+      return isAdminActive()
+        && normalizeRole() == 'GERENTE_CANTEIRO';
     }
 
-    // =========================================================================
-    // BLINDAGEM DE COMPETÊNCIA FECHADA (MÊS HOMOLOGADO) — FASE 4
-    // O bloqueio é aplicado no próprio banco, independente da interface:
-    // lançamentos de uma competência FECHADO não podem ser criados, alterados
-    // ou excluídos. O fluxo oficial de retificação é REABRIR a competência.
-    // Super Admin mantém bypass de emergência (gravação auditada).
-    // =========================================================================
-
-    function competenciaFechada(competencia) {
-      return competencia != null &&
-        exists(/databases/$(database)/documents/competencias_controle/$(competencia)) &&
-        get(/databases/$(database)/documents/competencias_controle/$(competencia)).data.status == 'FECHADO';
+    function isChefeCanteiro() {
+      return isAdminActive()
+        && normalizeRole() == 'CHEFE_CANTEIRO';
     }
 
-    function lancamentoCompetenciaPermitida(data) {
-      return isSuperAdmin() || !competenciaFechada(data.get('competencia', null));
+    function isChefeDA() {
+      return isAdminActive()
+        && normalizeRole() == 'CHEFE_DA';
+    }
+
+    function isAuxDA() {
+      return isAdminActive()
+        && normalizeRole() == 'AUX_DA';
+    }
+
+    function isDA() {
+      return isChefeDA() || isAuxDA();
+    }
+
+    // Usuários que podem realizar lançamentos.
+    function podeLancar() {
+      return isGlobalAdmin()
+        || isGerenteCanteiro()
+        || isDA();
+    }
+
+    // Usuários que podem fechar/reabrir competência.
+    function podeGerenciarCompetencia() {
+      return isGlobalAdmin()
+        || isGerenteCanteiro()
+        || isDA();
+    }
+
+    // ============================================================
+    // 5. ESCOPO DE CANTEIRO
+    // ============================================================
+
+    function meuCanteiro() {
+      return hasAdminDoc()
+        ? string(adminData().get('canteiroSede', ''))
+        : '';
+    }
+
+    function documentoDoMeuCanteiro(data) {
+      return data.get('employeeSede', '') == meuCanteiro();
+    }
+
+    function canteiroPermitido(canteiro) {
+      return isGlobalAdmin()
+        || (
+          isAdminActive()
+          && canteiro != null
+          && canteiro != ''
+          && canteiro == meuCanteiro()
+        );
+    }
+
+    // ============================================================
+    // 6. COLABORADOR / AUTOATENDIMENTO
+    // ============================================================
+
+    /*
+     * O colaborador NÃO acessa o Firestore com matrícula/senha
+     * diretamente.
+     *
+     * A aplicação valida a matrícula e a senha através de uma
+     * Cloud Function e recebe um Firebase Custom Token contendo:
+     *
+     * {
+     *   matricula: "123456"
+     * }
+     *
+     * Depois do signInWithCustomToken(), as Rules usam essa
+     * matrícula para restringir o acesso.
+     */
+
+    function isColaborador() {
+      return isAuthenticated()
+        && request.auth.token.get('matricula', null) != null
+        && string(request.auth.token.matricula) != '';
+    }
+
+    function colaboradorMatricula() {
+      return isColaborador()
+        ? string(request.auth.token.matricula)
+        : '';
+    }
+
+    function pertenceAoColaborador(data) {
+      return isColaborador()
+        && data.get('matricula', '') == colaboradorMatricula();
+    }
+
+    // ============================================================
+    // 7. COMPETÊNCIAS
+    // ============================================================
+
+    function competenciaValida(competencia) {
+      return competencia != null
+        && competencia.matches('^[0-9]{4}-[0-9]{2}$');
+    }
+
+    function competenciaAtual() {
+      return string(request.time.year())
+        + '-'
+        + (
+            request.time.month() < 10
+              ? '0' + string(request.time.month())
+              : string(request.time.month())
+          );
     }
 
     function competenciaAnterior(competencia) {
       let partes = competencia.split('-');
       let ano = int(partes[0]);
       let mes = int(partes[1]);
+
       return mes == 1
         ? string(ano - 1) + '-12'
-        : string(ano) + '-' + (mes < 11 ? '0' + string(mes - 1) : string(mes - 1));
+        : string(ano)
+          + '-'
+          + (
+              mes - 1 < 10
+                ? '0' + string(mes - 1)
+                : string(mes - 1)
+            );
     }
 
-    function canteiroAnteriorFechado(data) {
-      let competencia = data.get('competencia', null);
-      let canteiro = data.get('employeeSede', null);
-      let competenciaAnteriorRef = /databases/$(database)/documents/competencias_controle/$(competenciaAnterior(competencia));
-      return competencia != null
-        && canteiro != null
-        && exists(competenciaAnteriorRef)
-        && get(competenciaAnteriorRef).data.get('statusCanteiros', {}).get(canteiro, {}).get('status', 'ABERTO') == 'FECHADO';
-    }
-
-    function lancamentoCanteiroPermitido(data) {
-      return isSuperAdmin() || (lancamentoCompetenciaPermitida(data) && canteiroAnteriorFechado(data));
-    }
-
-    function isChefeCanteiro() {
-      return isAdminActive() && normalizeRole() == 'CHEFE_CANTEIRO';
-    }
-
-    function isChefeDA() {
-      return isAdminActive() && normalizeRole() == 'CHEFE_DA';
-    }
-
-    function isAuxDA() {
-      return isAdminActive() && normalizeRole() == 'AUX_DA';
-    }
-
-    // Usuários operacionais de campo (CHEFE_CANTEIRO, CHEFE_DA, AUX_DA)
-    function isFieldUser() {
-      return isChefeCanteiro() || isChefeDA() || isAuxDA();
-    }
-
-    // =========================================================================
-    // PORTAL DO COLABORADOR (autoatendimento)
-    // O autoatendimento consulta por matrícula/senha e NÃO usa Firebase Auth.
-    // As coleções estritamente necessárias à consulta pública permanecem com
-    // leitura pública; a ESCRITA fica restrita a administradores autorizados.
-    // =========================================================================
-
-    // Cadastro de colaboradores — leitura pública (consulta de extrato/saldo)
-    // Escrita: apenas RH / Super Admin (gestão de pessoal)
-    match /colaboradores/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
-    }
-
-    // Credenciais de autoatendimento (hash de senha por matrícula)
-    // Leitura pública é necessária à validação do login do colaborador;
-    // escrita restrita a RH / Super Admin.
-    match /colaboradores_auth/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
-    }
-
-    // Lançamentos de horas (banco de horas)
-    // Leitura pública (extrato do colaborador); escrita: admins globais + campo
-    // (GERENTE_CANTEIRO é somente leitura — não lança horas)
-    match /lancamentos/{doc} {
-      allow read: if true;
-      allow create: if (isGlobalAdmin() || isFieldUser()) && lancamentoCanteiroPermitido(request.resource.data);
-      allow update: if (isGlobalAdmin() || isFieldUser())
-        && lancamentoCanteiroPermitido(resource.data)
-        && lancamentoCanteiroPermitido(request.resource.data);
-      allow delete: if (isGlobalAdmin() || isFieldUser()) && lancamentoCanteiroPermitido(resource.data);
-    }
-
-    // Guias de Dispensa SPTF
-    match /dispensas_sptf/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin() || isFieldUser();
-    }
-
-    // Contracheques / folha (dado sensível — LGPD)
-    // Leitura pública necessária ao espelho de contracheque do colaborador;
-    // escrita e exclusão restritas a RH / Super Admin.
-    match /contracheques/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
-      allow delete: if isGlobalAdmin();
-    }
-
-    // Resumo mensal consolidado (dados analíticos derivados)
-    match /resumo_mensal/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
-    }
-
-    // Controle de Competências (ABERTO, FECHADO, REABERTO)
-    match /competencias_controle/{doc} {
-      allow read: if true;
-      allow create: if isGlobalAdmin();
-      allow delete: if isGlobalAdmin();
-      allow update: if isGlobalAdmin() || (
-        (isChefeDA() || isChefeCanteiro())
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statusCanteiros'])
-        && request.resource.data.get('statusCanteiros', {}).diff(resource.data.get('statusCanteiros', {})).affectedKeys().hasOnly([adminData().get('canteiroSede', '')])
-        && request.resource.data.get('statusCanteiros', {}).get(adminData().get('canteiroSede', ''), {}).get('status', '') in ['ABERTO', 'FECHADO']
+    function competenciaDoisMesesAtras(competencia) {
+      return competenciaAnterior(
+        competenciaAnterior(competencia)
       );
     }
 
-    // Canteiros de obras (cadastro institucional)
-    match /canteiros_obras/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
+    function competenciaTresMesesAtras(competencia) {
+      return competenciaAnterior(
+        competenciaDoisMesesAtras(competencia)
+      );
+    }
+
+    /*
+     * Últimos 3 meses:
+     *
+     * mês atual
+     * mês anterior
+     * dois meses anteriores
+     *
+     * Exemplo:
+     * setembro/2026
+     * agosto/2026
+     * julho/2026
+     */
+
+    function dentroUltimos3Meses(competencia) {
+      let atual = competenciaAtual();
+
+      return competenciaValida(competencia)
+        && (
+          competencia == atual
+          || competencia == competenciaAnterior(atual)
+          || competencia == competenciaDoisMesesAtras(atual)
+        );
+    }
+
+    // ============================================================
+    // 8. STATUS DA COMPETÊNCIA POR CANTEIRO
+    // ============================================================
+
+    function statusCompetenciaCanteiro(competencia, canteiro) {
+      let ref =
+        /databases/$(database)/documents/competencias_controle/$(competencia);
+
+      return exists(ref)
+        ? get(ref)
+            .data
+            .get('statusCanteiros', {})
+            .get(canteiro, {})
+            .get('status', 'ABERTO')
+        : 'ABERTO';
+    }
+
+    function competenciaAtualAberta(canteiro) {
+      return statusCompetenciaCanteiro(
+        competenciaAtual(),
+        canteiro
+      ) == 'ABERTO';
+    }
+
+    function competenciaAnteriorFechada(canteiro) {
+      let anterior = competenciaAnterior(
+        competenciaAtual()
+      );
+
+      return statusCompetenciaCanteiro(
+        anterior,
+        canteiro
+      ) == 'FECHADO';
+    }
+
+    /*
+     * REGRA PRINCIPAL DE LANÇAMENTO:
+     *
+     * - competência atual precisa estar ABERTA;
+     * - competência anterior do MESMO CANTEIRO precisa estar FECHADA.
+     *
+     * SUPER_ADMIN/RH continuam com acesso global.
+     */
+
+    function lancamentoCompetenciaPermitido(data) {
+      let canteiro = data.get('employeeSede', '');
+
+      return isGlobalAdmin()
+        || (
+          canteiroPermitido(canteiro)
+          && competenciaAtualAberta(canteiro)
+          && competenciaAnteriorFechada(canteiro)
+        );
+    }
+
+    function lancamentoCanteiroPermitido(data) {
+      let canteiro = data.get('employeeSede', '');
+
+      return isGlobalAdmin()
+        || (
+          canteiroPermitido(canteiro)
+          && competenciaAtualAberta(canteiro)
+          && competenciaAnteriorFechada(canteiro)
+        );
+    }
+
+    // ============================================================
+    // 9. REGRAS DE LANÇAMENTOS
+    // ============================================================
+
+    match /lancamentos/{doc} {
+
+      // SUPER_ADMIN/RH = global
+      // GERENTE = seu canteiro
+      // DA = seu canteiro
+      // COLABORADOR = somente seus lançamentos dos 3 últimos meses
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+          && dentroUltimos3Meses(
+            resource.data.get('competencia', '')
+          )
+        );
+
+      // Criar lançamento
+      allow create: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      // Atualizar lançamento
+      allow update: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        )
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      // Excluir lançamento
+      allow delete: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        );
+    }
+
+    // ============================================================
+    // 10. DISPENSAS / ATESTADOS / SPTF
+    // ============================================================
+
+    match /dispensas_sptf/{doc} {
+
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+          && dentroUltimos3Meses(
+            resource.data.get('competencia', '')
+          )
+        );
+
+      allow create: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      allow update: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        )
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      allow delete: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        );
+    }
+
+    // ============================================================
+    // 11. CONTRACHEQUES
+    // ============================================================
+
+    match /contracheques/{doc} {
+
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+          && dentroUltimos3Meses(
+            resource.data.get('competencia', '')
+          )
+        );
+
+      allow create: if
+        podeLancar()
+        && (
+          isGlobalAdmin()
+          || (
+            canteiroPermitido(
+              request.resource.data.get('employeeSede', '')
+            )
+            && competenciaAtualAberta(
+              request.resource.data.get('employeeSede', '')
+            )
+            && competenciaAnteriorFechada(
+              request.resource.data.get('employeeSede', '')
+            )
+          )
+        );
+
+      allow update: if
+        podeLancar()
+        && (
+          isGlobalAdmin()
+          || (
+            canteiroPermitido(
+              request.resource.data.get('employeeSede', '')
+            )
+            && competenciaAtualAberta(
+              request.resource.data.get('employeeSede', '')
+            )
+            && competenciaAnteriorFechada(
+              request.resource.data.get('employeeSede', '')
+            )
+          )
+        );
+
+      allow delete: if
+        isGlobalAdmin();
+    }
+
+    // ============================================================
+    // 12. INSALUBRIDADE - REGISTROS
+    // ============================================================
+
+    match /insalubridade_records/{doc} {
+
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+          && dentroUltimos3Meses(
+            resource.data.get('competencia', '')
+          )
+        );
+
+      allow create: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      allow update: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        )
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      allow delete: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        );
+    }
+
+    // ============================================================
+    // 13. INSALUBRIDADE - CONSOLIDADO
+    // ============================================================
+
+    match /insalubridade/{doc} {
+
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+          && dentroUltimos3Meses(
+            resource.data.get('competencia', '')
+          )
+        );
+
+      allow create: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      allow update: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        )
+        && lancamentoCompetenciaPermitido(
+          request.resource.data
+        );
+
+      allow delete: if
+        podeLancar()
+        && lancamentoCompetenciaPermitido(
+          resource.data
+        );
+    }
+
+    // ============================================================
+    // 14. RESUMO MENSAL
+    // ============================================================
+
+    match /resumo_mensal/{doc} {
+
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+          && dentroUltimos3Meses(
+            resource.data.get('competencia', '')
+          )
+        );
+
+      allow create, update: if
+        isGlobalAdmin();
+
+      allow delete: if
+        isSuperAdmin();
+    }
+
+    // ============================================================
+    // 15. CONTROLE DE COMPETÊNCIAS
+    // ============================================================
+
+    match /competencias_controle/{doc} {
+
+      // Usuários autenticados podem consultar o calendário/status.
+      allow read: if isAuthenticated();
+
+      allow create: if
+        podeGerenciarCompetencia();
+
+      /*
+       * RH / SUPER_ADMIN:
+       * podem alterar a competência globalmente.
+       *
+       * GERENTE/DA:
+       * somente statusCanteiros do próprio canteiro.
+       *
+       * Não podem alterar outros campos da competência.
+       */
+
+      allow update: if
+        isGlobalAdmin()
+
+        ||
+
+        (
+          (isGerenteCanteiro() || isDA())
+
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statusCanteiros'])
+
+          && request.resource.data
+               .get('statusCanteiros', {})
+               .diff(
+                 resource.data.get('statusCanteiros', {})
+               )
+               .affectedKeys()
+               .hasOnly([meuCanteiro()])
+
+          && request.resource.data
+               .get('statusCanteiros', {})
+               .get(meuCanteiro(), {})
+               .get('status', '')
+               in ['ABERTO', 'FECHADO']
+        );
+
       allow delete: if isGlobalAdmin();
     }
-    // Alias legado mantido por compatibilidade
+
+    // ============================================================
+    // 16. CANTEIROS
+    // ============================================================
+
+    match /canteiros_obras/{doc} {
+
+      allow read: if isAuthenticated();
+
+      allow create, update, delete: if
+        isGlobalAdmin();
+    }
+
     match /canteiros/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
+
+      allow read: if isAuthenticated();
+
+      allow create, update, delete: if
+        isGlobalAdmin();
     }
 
-    // Catálogo de UOs criadas pela classificação de importações.
+    // ============================================================
+    // 17. UNIDADES ORGANIZACIONAIS
+    // ============================================================
+
     match /unidades_organizacionais/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
+
+      allow read: if isAuthenticated();
+
+      allow create, update, delete: if
+        isGlobalAdmin();
     }
 
-    // Insalubridade (laudos)
-    // Leitura pública; escrita: admins globais + CHEFE_CANTEIRO + CHEFE_DA
-    // (AUX_DA não valida insalubridade; GERENTE_CANTEIRO é somente leitura)
-    match /insalubridade_records/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin() || isChefeCanteiro() || isChefeDA();
-      allow delete: if isGlobalAdmin() || isChefeCanteiro() || isChefeDA();
-    }
-    // Alias legado mantido por compatibilidade
-    match /insalubridade/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin() || isChefeCanteiro() || isChefeDA();
-    }
+    // ============================================================
+    // 18. CONFIGURAÇÕES DO SISTEMA
+    // ============================================================
 
-    // Configurações do sistema e da instituição (branding/identidade)
     match /system_config/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
+
+      allow read: if isAuthenticated();
+
+      allow create, update, delete: if
+        isGlobalAdmin();
     }
+
     match /institution_settings/{doc} {
-      allow read: if true;
-      allow write: if isGlobalAdmin();
+
+      allow read: if isAuthenticated();
+
+      allow create, update, delete: if
+        isGlobalAdmin();
     }
 
-    // =========================================================================
-    // LOGS
-    // =========================================================================
+    // ============================================================
+    // 19. COLABORADORES
+    // ============================================================
 
-    // Logs de acesso do autoatendimento — gravados sem Firebase Auth
-    match /logs_acesso/{doc} {
-      allow read, write: if true;
+    /*
+     * ATENÇÃO:
+     *
+     * O documento de colaboradores não deve conter informações
+     * que o colaborador não precise consultar.
+     *
+     * Se houver CPF, endereço, salário, dados bancários etc.,
+     * o ideal é separar essas informações em coleção administrativa.
+     */
+
+    match /colaboradores/{doc} {
+
+      // RH/Gerência/DA podem consultar conforme necessidade.
+      allow read: if
+        isGlobalAdmin()
+        || (
+          (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
+        || (
+          isColaborador()
+          && pertenceAoColaborador(resource.data)
+        );
+
+      // Colaborador nunca cria/edita/exclui.
+      allow create, update, delete: if
+        isGlobalAdmin();
     }
 
-    // Trilha de auditoria
-    match /logs_auditoria/{doc} {
-      allow read, write: if true;
-      allow delete: if isSuperAdmin();
+    // ============================================================
+    // 20. CREDENCIAIS DOS COLABORADORES
+    // ============================================================
+
+    /*
+     * TOTALMENTE FECHADO PARA CLIENTE.
+     *
+     * A Cloud Function/Admin SDK deve acessar esta coleção.
+     */
+
+    match /colaboradores_auth/{doc} {
+
+      allow read, create, update, delete: if false;
     }
 
-    // =========================================================================
-    // GESTÃO DE USUÁRIOS ADMINISTRATIVOS (sensível)
-    // =========================================================================
+    // ============================================================
+    // 21. ADMIN USERS
+    // ============================================================
+
+    /*
+     * Segurança:
+     *
+     * - usuário comum pode consultar SOMENTE o próprio cadastro;
+     * - não pode mudar o próprio perfil;
+     * - não pode se promover;
+     * - SUPER_ADMIN administra tudo;
+     * - GERENTE pode administrar DA/AUX_DA do próprio canteiro.
+     */
 
     match /admin_users/{userId} {
-      allow read: if true;
-      allow write: if isSuperAdmin() || (isAuthenticated() && userEmail() == userId.lower());
-      allow delete: if isSuperAdmin();
+
+      // Super Admin consulta tudo.
+      allow read: if
+        isSuperAdmin()
+
+        ||
+
+        // RH consulta administradores.
+        isRH()
+
+        ||
+
+        // Gerente consulta usuários do seu canteiro.
+        (
+          isGerenteCanteiro()
+          && resource.data.get('canteiroSede', '') == meuCanteiro()
+        )
+
+        ||
+
+        // Qualquer administrador consulta o próprio cadastro.
+        (
+          isAuthenticated()
+          && userId.lower() == userEmail()
+        );
+
+      // SUPER_ADMIN cria usuários.
+      allow create: if
+        isSuperAdmin()
+
+        ||
+
+        /*
+         * GERENTE pode criar apenas:
+         * CHEFE_DA ou AUX_DA
+         * dentro do próprio canteiro.
+         */
+        (
+          isGerenteCanteiro()
+          && request.resource.data.get(
+               'canteiroSede',
+               ''
+             ) == meuCanteiro()
+          && request.resource.data.get(
+               'nivelAcesso',
+               request.resource.data.get('role', '')
+             )
+             in ['CHEFE_DA', 'ENCARREGADO_DA', 'AUX_DA', 'AUXILIAR_DA']
+        );
+
+      // Atualização
+      allow update: if
+
+        // SUPER_ADMIN pode tudo.
+        isSuperAdmin()
+
+        ||
+
+        /*
+         * RH pode administrar usuários administrativos.
+         */
+        isRH()
+
+        ||
+
+        /*
+         * GERENTE pode administrar DA/AUX_DA
+         * do próprio canteiro.
+         */
+        (
+          isGerenteCanteiro()
+
+          && resource.data.get(
+               'canteiroSede',
+               ''
+             ) == meuCanteiro()
+
+          && request.resource.data.get(
+               'canteiroSede',
+               ''
+             ) == meuCanteiro()
+
+          && request.resource.data.get(
+               'nivelAcesso',
+               request.resource.data.get('role', '')
+             )
+             in ['CHEFE_DA', 'ENCARREGADO_DA', 'AUX_DA', 'AUXILIAR_DA']
+
+          && request.resource.data.diff(
+               resource.data
+             ).affectedKeys()
+             .hasOnly([
+               'nome',
+               'telefone',
+               'fotoUrl',
+               'status',
+               'ativo',
+               'nivelAcesso',
+               'role',
+               'canteiroSede'
+             ])
+        )
+
+        ||
+
+        /*
+         * Usuário comum pode alterar somente dados pessoais
+         * permitidos, nunca seu próprio nível de acesso.
+         */
+        (
+          isAuthenticated()
+
+          && userId.lower() == userEmail()
+
+          && request.resource.data.diff(
+               resource.data
+             ).affectedKeys()
+             .hasOnly([
+               'nome',
+               'telefone',
+               'fotoUrl'
+             ])
+
+          && request.resource.data.get(
+               'nivelAcesso',
+               resource.data.get('nivelAcesso', '')
+             )
+             == resource.data.get(
+               'nivelAcesso',
+               ''
+             )
+
+          && request.resource.data.get(
+               'role',
+               resource.data.get('role', '')
+             )
+             == resource.data.get(
+               'role',
+               ''
+             )
+
+          && request.resource.data.get('canteiroSede', '')
+             == resource.data.get('canteiroSede', '')
+        );
+
+      // Somente SUPER_ADMIN pode excluir usuários.
+      allow delete: if
+        isSuperAdmin();
     }
 
-    // Espelho sincronizado de admin_users — acesso restrito
+    // ============================================================
+    // 22. USUARIOS_SISTEMA
+    // ============================================================
+
     match /usuarios_sistema/{userId} {
-      allow read: if true;
-      allow write: if isSuperAdmin() || (isAuthenticated() && userEmail() == userId.lower());
-      allow delete: if isSuperAdmin();
+
+      allow read: if
+        isSuperAdmin()
+        || isRH()
+        || (
+          isGerenteCanteiro()
+          && resource.data.get(
+               'canteiroSede',
+               ''
+             ) == meuCanteiro()
+        )
+        || (
+          isAuthenticated()
+          && userId.lower() == userEmail()
+        );
+
+      allow create: if
+        isSuperAdmin();
+
+      allow update: if
+
+        isSuperAdmin()
+
+        ||
+
+        isRH()
+
+        ||
+
+        (
+          isGerenteCanteiro()
+
+          && resource.data.get(
+               'canteiroSede',
+               ''
+             ) == meuCanteiro()
+
+          && request.resource.data.get(
+               'canteiroSede',
+               ''
+             ) == meuCanteiro()
+
+          && request.resource.data.get(
+               'nivelAcesso',
+               request.resource.data.get('role', '')
+             )
+             in ['CHEFE_DA', 'ENCARREGADO_DA', 'AUX_DA', 'AUXILIAR_DA']
+
+          && request.resource.data.diff(
+               resource.data
+             ).affectedKeys()
+             .hasOnly([
+               'nome',
+               'telefone',
+               'fotoUrl',
+               'status',
+               'ativo',
+               'nivelAcesso',
+               'role',
+               'canteiroSede'
+             ])
+        )
+
+        ||
+
+        (
+          isAuthenticated()
+
+          && userId.lower() == userEmail()
+
+          && request.resource.data.diff(
+               resource.data
+             ).affectedKeys()
+             .hasOnly([
+               'nome',
+               'telefone',
+               'fotoUrl'
+             ])
+
+          && request.resource.data.get('canteiroSede', '')
+             == resource.data.get('canteiroSede', '')
+        );
+
+      allow delete: if
+        isSuperAdmin();
     }
+
+    // ============================================================
+    // 23. LOGS DE ACESSO
+    // ============================================================
+
+    /*
+     * O ideal é que login, inclusive tentativas falhas, seja
+     * registrado pela Cloud Function.
+     *
+     * Não permitimos leitura pública.
+     */
+
+    match /logs_acesso/{doc} {
+
+      allow read: if
+        isGlobalAdmin();
+
+      allow create: if
+        false;
+
+      allow update, delete: if
+        isSuperAdmin();
+    }
+
+    // ============================================================
+    // 24. LOGS DE AUDITORIA
+    // ============================================================
+
+    /*
+     * Os usuários não devem conseguir apagar ou modificar
+     * registros históricos de auditoria.
+     *
+     * A criação pode ser feita pelo servidor/Cloud Function.
+     */
+
+    match /logs_auditoria/{doc} {
+
+      allow read: if
+        isGlobalAdmin();
+
+      allow create: if
+        false;
+
+      allow update, delete: if
+        false;
+    }
+
+    // ============================================================
+    // 25. LOGS DO SISTEMA
+    // ============================================================
 
     match /system_logs/{doc} {
-      allow read, write: if true;
-    }
-    match /logs/{doc} {
-      allow read, write: if true;
+
+      allow read: if
+        isGlobalAdmin();
+
+      allow create: if
+        false;
+
+      allow update, delete: if
+        isSuperAdmin();
     }
 
-    // =========================================================================
-    // SUPER_ADMIN — acesso total a qualquer coleção (catch-all, por último)
-    // Para demais perfis, o catch-all nega; regras mais específicas acima
-    // ainda concedem acesso conforme o mapeamento.
-    // =========================================================================
+    match /logs/{doc} {
+
+      allow read: if
+        isGlobalAdmin();
+
+      allow create: if
+        false;
+
+      allow update, delete: if
+        isSuperAdmin();
+    }
+
+    // ============================================================
+    // 26. NEGAR TUDO QUE NÃO FOI DEFINIDO
+    // ============================================================
+
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
+
+      allow read, write: if
+        false;
     }
   }
 }
