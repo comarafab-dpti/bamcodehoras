@@ -278,7 +278,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Aba 7: Manual */}
-            <button
+            {!isAuxDA && <button
               onClick={() => onSelectTab('arquitetura')}
               className={`px-2 lg:px-2.5 xl:px-3.5 py-1.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all flex items-center gap-1 xl:gap-1.5 whitespace-nowrap shrink-0 ${
                 activeTab === 'arquitetura'
@@ -293,7 +293,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <BookOpen className="w-4 h-4 text-cyan-400 shrink-0" />
               <span>Manual</span>
-            </button>
+            </button>}
           </nav>
 
           {/* ========================================================= */}
@@ -1024,7 +1024,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             Relatórios
           </button>
         )}
-        <button
+        {!isAuxDA && <button
           onClick={() => onSelectTab('arquitetura')}
           className={`px-2.5 py-1.5 rounded-lg whitespace-nowrap font-medium shrink-0 transition-colors ${
             activeTab === 'arquitetura'
@@ -1033,7 +1033,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}
         >
           Manual
-        </button>
+        </button>}
       </div>
     </header>
   );

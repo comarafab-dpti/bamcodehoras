@@ -203,6 +203,7 @@ export interface AuthSession {
   sede?: string;
   canteiroCodigo?: string;
   canteiroId?: string;
+  uoGestao?: string;
   tratamentoTitulo?: TratamentoTitulo;
 }
 

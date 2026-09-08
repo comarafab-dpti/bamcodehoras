@@ -9,6 +9,7 @@ export interface RBACUser {
   sede?: string;
   canteiroCodigo?: string;
   canteiroId?: string;
+  uoGestao?: string;
 }
 
 /**
@@ -375,16 +376,28 @@ export const rbacService = {
     return (user.canteiroId || user.canteiroCodigo || user.sede || 'KO').toUpperCase();
   },
 
+  getUserUo(user?: RBACUser | null): string {
+    return (user?.uoGestao || '').trim().toUpperCase();
+  },
+
+  canAccessEmployeeInScope(user: RBACUser | null, employee: Employee): boolean {
+    if (!user) return false;
+    if (this.hasGlobalAccess(user.role)) return true;
+
+    const userUo = this.getUserUo(user);
+    if (this.normalizeRole(user.role) === 'AUX_DA' && userUo) {
+      const employeeUo = (employee.lotacaoUoCodigo || employee.lotacao || '').trim().toUpperCase();
+      return employeeUo === userUo;
+    }
+
+    return (employee.sedeCodigo || '').toUpperCase() === this.getUserCanteiroId(user);
+  },
+
   /**
    * Checa se o usuário pode acessar dados de um determinado colaborador baseado no canteiro
    */
   canAccessEmployee(user: RBACUser | null, employee: Employee): boolean {
-    if (!user) return false;
-    if (this.hasGlobalAccess(user.role)) return true;
-    
-    const userCanteiro = this.getUserCanteiroId(user);
-    const empSede = (employee.sedeCodigo || '').toUpperCase();
-    return empSede === userCanteiro;
+    return this.canAccessEmployeeInScope(user, employee);
   },
 
   /**
@@ -394,11 +407,7 @@ export const rbacService = {
     if (!user) return [];
     if (this.hasGlobalAccess(user.role)) return employees;
 
-    const userCanteiro = this.getUserCanteiroId(user);
-    return employees.filter((emp) => {
-      const empSede = (emp.sedeCodigo || '').toUpperCase();
-      return empSede === userCanteiro;
-    });
+    return employees.filter((emp) => this.canAccessEmployeeInScope(user, emp));
   },
 
   /**
@@ -414,7 +423,7 @@ export const rbacService = {
     const allowedMatriculas = new Set<string>();
     employees.forEach((emp) => {
       const empSede = (emp.sedeCodigo || '').toUpperCase();
-      if (empSede === userCanteiro) {
+      if (this.canAccessEmployeeInScope(user, emp)) {
         allowedMatriculas.add(emp.matricula.trim().toUpperCase());
       }
     });
@@ -422,6 +431,7 @@ export const rbacService = {
     return records.filter((rec) => {
       const mat = (rec.matricula || '').trim().toUpperCase();
       if (allowedMatriculas.has(mat)) return true;
+      if (this.getUserUo(user) && this.normalizeRole(user.role) === 'AUX_DA') return false;
       if (rec.employeeSede && rec.employeeSede.toUpperCase() === userCanteiro) return true;
       return false;
     });
@@ -430,12 +440,19 @@ export const rbacService = {
   /**
    * Filtro rigoroso de Lançamentos de Insalubridade por Tenancy (Canteiro Ativo)
    */
-  filterInsalubrityByTenancy(records: InsalubrityRecord[], user: RBACUser | null): InsalubrityRecord[] {
+  filterInsalubrityByTenancy(records: InsalubrityRecord[], employees: Employee[], user: RBACUser | null): InsalubrityRecord[] {
     if (!user) return [];
     if (this.hasGlobalAccess(user.role)) return records;
 
     const userCanteiro = this.getUserCanteiroId(user);
+    const allowedMatriculas = new Set(
+      employees
+        .filter((employee) => this.canAccessEmployeeInScope(user, employee))
+        .map((employee) => employee.matricula.trim().toUpperCase()),
+    );
     return records.filter((rec) => {
+      if (allowedMatriculas.has(rec.matricula.trim().toUpperCase())) return true;
+      if (this.getUserUo(user) && this.normalizeRole(user.role) === 'AUX_DA') return false;
       return (rec.sede || 'KO').toUpperCase() === userCanteiro;
     });
   },
@@ -452,7 +469,7 @@ export const rbacService = {
     const allowedMatriculas = new Set<string>();
     employees.forEach((emp) => {
       const empSede = (emp.sedeCodigo || '').toUpperCase();
-      if (empSede === userCanteiro) {
+      if (this.canAccessEmployeeInScope(user, emp)) {
         allowedMatriculas.add(emp.matricula.trim().toUpperCase());
       }
     });
@@ -460,6 +477,7 @@ export const rbacService = {
     return dispensas.filter((d) => {
       const mat = (d.matricula || '').trim().toUpperCase();
       if (allowedMatriculas.has(mat)) return true;
+      if (this.getUserUo(user) && this.normalizeRole(user.role) === 'AUX_DA') return false;
       const secao = (d.secaoCanteiro || '').toUpperCase();
       return secao.includes(userCanteiro);
     });

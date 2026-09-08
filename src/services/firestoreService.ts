@@ -534,7 +534,7 @@ export const firestoreService = {
       const cached = localCache.getCache<AdminUser[]>(CACHE_KEYS.ADMIN_USERS);
       if (cached) return cached;
     } else {
-      localCache.invalidate(CACHE_KEYS.ADMIN_USERS);
+      localCache.clearCache(CACHE_KEYS.ADMIN_USERS);
     }
     try {
       const snapshot = await getDocs(query(collection(db, path), limit(200)));

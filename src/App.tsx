@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Employee, TimeRecord, Attachment, AdminUser, AdminRole, AuthSession, InsalubrityRecord, SystemConfig, GrauInsalubridade, ConstructionSite, PaystubRecord, DispensaSptfRecord } from './types';
 import { storageService } from './services/storageService';
 import { firestoreService, BatchProgressInfo } from './services/firestoreService';
@@ -76,6 +76,7 @@ export interface AppUser {
   saram?: string;
   funcao?: string;
   canteiroSede?: string;
+  uoGestao?: string;
 }
 
 export default function App() {
@@ -244,12 +245,12 @@ export default function App() {
   }, [dispensasSptf, tenancyEmployees, currentUser]);
 
   const tenancyInsalubrity = useMemo(() => {
-    return rbacService.filterInsalubrityByTenancy(insalubrityRecords, currentUser);
-  }, [insalubrityRecords, currentUser]);
+    return rbacService.filterInsalubrityByTenancy(insalubrityRecords, tenancyEmployees, currentUser);
+  }, [insalubrityRecords, tenancyEmployees, currentUser]);
 
   // Guard de proteção: Aux de DA nunca acessa relatórios
   useEffect(() => {
-    if (userRole === 'AUX_DA' && activeTab === 'relatorios') {
+    if (userRole === 'AUX_DA' && (activeTab === 'relatorios' || activeTab === 'arquitetura')) {
       setActiveTab('dashboard');
     }
   }, [userRole, activeTab]);
@@ -561,6 +562,7 @@ export default function App() {
             displayName: user.displayName || processed.admin.nome,
             role: processed.isSuperAdmin ? 'SUPER_ADMIN' : processed.admin.nivelAcesso,
             cargo: processed.admin.cargo,
+            uoGestao: processed.admin.uoGestao,
             loginTime: new Date().toISOString(),
             photoURL: user.photoURL || processed.admin.foto,
           };
@@ -578,6 +580,7 @@ export default function App() {
             nome: processed.admin.nome,
             role: appUser.role,
             cargo: processed.admin.cargo,
+            uoGestao: processed.admin.uoGestao,
             loginTime: new Date().toISOString(),
           });
         } catch (err) {
@@ -597,6 +600,7 @@ export default function App() {
             displayName: savedSession.nome,
             role: savedSession.role,
             cargo: savedSession.cargo,
+            uoGestao: savedSession.uoGestao,
             sede: savedSession.sede || 'TODAS',
             canteiroCodigo: savedSession.canteiroCodigo || 'KO',
             canteiroSede: savedSession.canteiroSede || 'TODAS',
@@ -672,6 +676,7 @@ export default function App() {
         displayName: userToProcess?.displayName || processed.admin.nome,
         role: processed.isSuperAdmin ? 'SUPER_ADMIN' : processed.admin.nivelAcesso,
         cargo: processed.admin.cargo,
+        uoGestao: processed.admin.uoGestao,
         loginTime: new Date().toISOString(),
         photoURL: userToProcess?.photoURL || processed.admin.foto,
       };
@@ -684,6 +689,7 @@ export default function App() {
         nome: processed.admin.nome,
         role: appUser.role,
         cargo: processed.admin.cargo,
+        uoGestao: processed.admin.uoGestao,
         loginTime: appUser.loginTime || new Date().toISOString(),
       });
       return appUser;
@@ -732,6 +738,7 @@ export default function App() {
               cargo: processed.admin.cargo,
               sede: processed.admin.sede || processed.admin.canteiroSede || 'TODAS',
               canteiroCodigo: processed.admin.canteiroCodigo || processed.admin.sede || 'KO',
+              uoGestao: processed.admin.uoGestao,
               loginTime: new Date().toISOString(),
               photoURL: user.photoURL || processed.admin.foto,
             };
@@ -809,6 +816,7 @@ export default function App() {
       displayName: user.displayName || processed.admin.nome,
       role: processed.isSuperAdmin ? 'SUPER_ADMIN' : processed.admin.nivelAcesso,
       cargo: processed.admin.cargo,
+      uoGestao: processed.admin.uoGestao,
       sede: processed.admin.sede || processed.admin.canteiroSede || 'TODAS',
       canteiroCodigo: processed.admin.canteiroCodigo || processed.admin.sede || 'KO',
       loginTime: new Date().toISOString(),
