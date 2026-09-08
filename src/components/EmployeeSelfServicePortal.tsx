@@ -404,7 +404,7 @@ export const EmployeeSelfServicePortal: React.FC<EmployeeSelfServicePortalProps>
           }`}
         >
           <Receipt className="w-4 h-4 text-emerald-400" />
-          <span>Meu Contracheque Digital (Oficial)</span>
+          <span>Contracheque</span>
           {myPaystubs.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">
               {myPaystubs.length}
