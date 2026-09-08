@@ -17,16 +17,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
 }) => {
   const { isInstallable, isInstalled, isStandalone, isIOS, install } = usePWAInstall();
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const isDark = theme === 'dark';
 
   // Se o app já está rodando instalado em modo standalone, oculta o botão
   if (isStandalone || isInstalled) {
-    return null;
-  }
-
-  // Se o navegador não for compatível com instalação direta nem for iOS, não exibe
-  if (!isInstallable && !isIOS) {
     return null;
   }
 
@@ -43,7 +39,10 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
       if (success && onInstalled) {
         onInstalled();
       }
+      return;
     }
+
+    setShowInstallHelp(true);
   };
 
   // Renderização do Modal de Instruções para iOS (Safari)
@@ -146,6 +145,48 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     );
   };
 
+  const renderInstallHelp = () => {
+    if (!showInstallHelp) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${
+          isDark ? 'bg-[#16243D] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-900'
+        }`} role="dialog" aria-modal="true" aria-labelledby="pwa-install-help-title">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 id="pwa-install-help-title" className="text-base font-bold">Instalar App COMARA</h3>
+              <p className={`text-xs mt-1 ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+                O navegador ainda não liberou o botão automático de instalação.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowInstallHelp(false)}
+              className={`p-1.5 rounded-lg cursor-pointer ${isDark ? 'text-[#94A3B8] hover:bg-[#243756]' : 'text-slate-500 hover:bg-slate-100'}`}
+              aria-label="Fechar instruções de instalação"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className={`mt-5 p-3 rounded-xl border text-xs leading-relaxed ${
+            isDark ? 'bg-[#0F1B33] border-[#243756] text-[#CBD5E1]' : 'bg-slate-50 border-slate-200 text-slate-600'
+          }`}>
+            <p><strong>Chrome no computador:</strong> abra o menu ⋮ e selecione <strong>Instalar COMARA</strong> ou <strong>Salvar e compartilhar → Instalar página como app</strong>.</p>
+            <p className="mt-2"><strong>Chrome no celular:</strong> abra o menu ⋮ e toque em <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowInstallHelp(false)}
+            className="w-full mt-5 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+          >
+            Entendido
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Variante: Menu Item (Para dentro de dropdowns de configurações/perfil)
   if (variant === 'menu-item') {
     return (
@@ -173,6 +214,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           </div>
         </button>
         {renderIOSModal()}
+        {renderInstallHelp()}
       </>
     );
   }
@@ -209,6 +251,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           </div>
         </div>
         {renderIOSModal()}
+        {renderInstallHelp()}
       </>
     );
   }
@@ -231,6 +274,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         <span className="hidden sm:inline">Instalar App</span>
       </button>
       {renderIOSModal()}
+      {renderInstallHelp()}
     </>
   );
 };
