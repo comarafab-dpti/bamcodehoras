@@ -267,7 +267,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
       {/* ------------------------------------------------------------- */}
       {/* CABEÇALHO COMPACTO COM BOTÃO DISCRETO DE ACESSO GESTÃO RH    */}
       {/* ------------------------------------------------------------- */}
-      <header className={`hidden sm:flex py-2.5 sm:py-3.5 px-4 sm:px-8 border-b items-center justify-between transition-all ${
+      <header className={`flex py-2.5 sm:py-3.5 px-3 sm:px-8 border-b items-center justify-between transition-all ${
         isDark ? 'bg-[#11203A] border-[#233654]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         <div className="flex items-center space-x-2.5 sm:space-x-3">
@@ -1253,8 +1253,20 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                     <strong className="text-emerald-400">2.0x</strong> (+100% adicional)
                   </div>
                   <div className={`p-2 rounded-lg border ${isDark ? 'bg-[#16243D] border-[#2A4063]' : 'bg-white border-slate-200'}`}>
-                    <span className="text-gray-400 block text-[10px]">Falta Injustificada</span>
-                    <strong className="text-red-400">-8.0h</strong> (Dedução automática)
+                    <span className="text-gray-400 block text-[10px]">Dispensa SPTF — dia inteiro</span>
+                    <strong className="text-amber-400">-8.0h</strong> (Desconto no banco de horas)
+                  </div>
+                  <div className={`p-2 rounded-lg border ${isDark ? 'bg-[#16243D] border-[#2A4063]' : 'bg-white border-slate-200'}`}>
+                    <span className="text-gray-400 block text-[10px]">Dispensa SPTF — meio período</span>
+                    <strong className="text-amber-400">-4.0h</strong> (Desconto no banco de horas)
+                  </div>
+                  <div className={`p-2 rounded-lg border ${isDark ? 'bg-[#16243D] border-[#2A4063]' : 'bg-white border-slate-200'}`}>
+                    <span className="text-gray-400 block text-[10px]">Falta injustificada</span>
+                    <strong className="text-red-400">Contracheque</strong> (Desconto na folha, sem lançamento no banco)
+                  </div>
+                  <div className={`p-2 rounded-lg border ${isDark ? 'bg-[#16243D] border-[#2A4063]' : 'bg-white border-slate-200'}`}>
+                    <span className="text-gray-400 block text-[10px]">Falta justificada / Atestado</span>
+                    <strong className="text-emerald-400">Sem desconto</strong> (Não vai para o contracheque nem para o banco)
                   </div>
                 </div>
               </div>
