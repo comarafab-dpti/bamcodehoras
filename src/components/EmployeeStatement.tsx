@@ -62,6 +62,7 @@ interface EmployeeStatementProps {
   onDeleteRecord?: (id: string) => void | Promise<void>;
   onViewAttachment: (attachment: Attachment, empName?: string, recordDate?: string) => void;
   onUpdateEmployees?: (employees: Employee[]) => void;
+  onEmployeeSaved?: (employee: Employee) => void;
   theme?: 'dark' | 'light';
 }
 
@@ -83,6 +84,7 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
   onDeleteRecord,
   onViewAttachment,
   onUpdateEmployees,
+  onEmployeeSaved,
   theme = 'dark',
 }) => {
   const isDark = theme === 'dark';
@@ -365,7 +367,11 @@ export const EmployeeStatement: React.FC<EmployeeStatementProps> = ({
           theme={theme}
           onClose={() => setEmployeeToEdit(null)}
           onSaveSuccess={(savedEmp) => {
-            onUpdateEmployees?.(employees.map((item) => (item.id === savedEmp.id ? savedEmp : item)));
+            if (onEmployeeSaved) {
+              onEmployeeSaved(savedEmp);
+            } else {
+              onUpdateEmployees?.(employees.map((item) => (item.id === savedEmp.id ? savedEmp : item)));
+            }
             setEmployeeToEdit(null);
           }}
         />

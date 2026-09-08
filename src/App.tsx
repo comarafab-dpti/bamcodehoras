@@ -2144,6 +2144,7 @@ export default function App() {
               onDeleteRecord={(id) => handleDeleteRecord(id)}
               onViewAttachment={handleViewAttachment}
               onUpdateEmployees={handleUpdateEmployees}
+              onEmployeeSaved={handleEmployeeSaved}
               theme={theme}
             />
           )}
