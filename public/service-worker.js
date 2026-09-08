@@ -8,19 +8,20 @@
  * - APIs / Firestore / Auth: BYPASS TOTAL (Network-Only sem cache de dados sensíveis)
  */
 
-const CACHE_NAME = 'comara-pwa-v1.0.0';
+const CACHE_NAME = 'comara-pwa-v1.1.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/comara-logo.svg',
   '/comara-logo.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
   '/apple-touch-icon.png',
   '/favicon.ico',
-  '/favicon.png'
+  '/favicon.png',
+  '/pwa-screenshot-wide.png',
+  '/pwa-screenshot-mobile.png'
 ];
 
 // Instalação do Service Worker - Pré-cache de assets essenciais

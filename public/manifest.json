@@ -6,6 +6,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
   "theme_color": "#16243D",
   "background_color": "#0F1B33",
@@ -30,12 +31,27 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+comara",
+      "url": "/?tab=%s"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/pwa-screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Portal COMARA para consulta do Banco de Horas"
     },
     {
-      "src": "/comara-logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "/pwa-screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "label": "Portal COMARA no celular"
     }
   ],
   "shortcuts": [
