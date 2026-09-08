@@ -15,7 +15,7 @@ O sistema usa **6 perfis canônicos**. Aliases legados são normalizados em temp
 | `GERENTE_CANTEIRO` | `GERENTE`, `GERENTE_CAMPO`, `ROLE_GERENTE`, `AUDITOR` | CANTEIRO | Somente leitura das horas e relatórios do seu canteiro ativo. |
 | `CHEFE_CANTEIRO` | `ENCARREGADO_CANTEIRO` | CANTEIRO | Operacional de campo: lançamentos, insalubridade e dispensas do seu canteiro. |
 | `CHEFE_DA` | `ENCARREGADO_DA` | CANTEIRO | Gestão administrativa do canteiro: auditoria local, relatórios e gestão do canteiro. |
-| `AUX_DA` | `AUXILIAR_DA` | CANTEIRO | Auxiliar de campo: lançamentos de horas e emissão de dispensas no canteiro ativo. |
+| `AUX_DA` | `AUXILIAR_DA` | CANTEIRO | Auxiliar de apoio do DA: mesmo fluxo funcional do DA para banco de horas, insalubridade, dispensas e contracheques, com telas simplificadas no canteiro ativo. |
 | `NENHUM` | — | NENHUM | Usuário pendente de aprovação. Sem acesso a dados; vê apenas manual e tela de pendência. |
 
 > A normalização ocorre em `rbacService.normalizeRole`. O `NENHUM` é o perfil atribuído no auto-cadastro de um novo login Google não master (`authService`); ele só passa a ter acesso após um `SUPER_ADMIN` aprovar e definir um perfil.
@@ -34,9 +34,9 @@ Legenda: ✅ permitido · 🔒 leitura · ✏️ escrita · ❌ negado · 🌐 g
 | Excluir colaborador / lançamento | 🌐 | 🌐 | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Lançar horas (individual/lote) | 🌐 | 🌐 | ❌ | ✏️ 🏢 | ✏️ 🏢 | ✏️ 🏢 | ❌ |
 | Aprovar / homologar horas | 🌐 | 🌐 | ❌ | ✅ 🏢 | ✅ 🏢 | ❌ | ❌ |
-| Lançar / validar insalubridade | 🌐 | 🌐 | ❌ | ✏️ 🏢 | ✏️ 🏢 | ❌ | ❌ |
+| Lançar / validar insalubridade | 🌐 | 🌐 | ❌ | ✏️ 🏢 | ✏️ 🏢 | ✏️ 🏢 | ❌ |
 | Emitir Dispensa SPTF | 🌐 | 🌐 | ❌ | ✏️ 🏢 | ✏️ 🏢 | ✏️ 🏢 | ❌ |
-| Contracheques / importar folha | 🌐 | 🌐 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Contracheques / importar folha | 🌐 | 🌐 | ❌ | ❌ | ✏️ 🏢 | ✏️ 🏢 | ❌ |
 | Gerenciar canteiros | 🌐 | 🌐 | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Configurações do sistema / instituição | 🌐 | 🌐 | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Trilha de auditoria (visualizar) | 🌐 | 🌐 | ❌ | ❌ | 🔒 🏢 | ❌ | ❌ |

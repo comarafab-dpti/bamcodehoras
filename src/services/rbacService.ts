@@ -80,7 +80,7 @@ export const ROLE_INFO: Record<string, {
     shortLabel: 'Aux. DA',
     scope: 'CANTEIRO_RESTRICTED',
     badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-    description: 'Auxiliar de Campo: Tela restrita e ágil para lançamentos de horas e emissão de dispensas SPTF no canteiro ativo.',
+    description: 'Auxiliar de apoio administrativo do DA: mesmo fluxo de dados de banco de horas, insalubridade e contracheques, com telas simplificadas para o canteiro ativo.',
   },
 
   // Aliases e Retrocompatibilidade de exibição
@@ -243,8 +243,10 @@ export const rbacService = {
   },
 
   /**
-   * Permissão para lançar / validar insalubridade no canteiro
-   * (SUPER_ADMIN, RH_ADMIN, CHEFE_CANTEIRO, CHEFE_DA)
+   * Permissão para lançar / validar insalubridade no canteiro.
+   * O perfil AUX_DA deve repetir o mesmo fluxo administrativo do DA,
+   * só com telas simplificadas para o usuário de apoio.
+   * (SUPER_ADMIN, RH_ADMIN, CHEFE_CANTEIRO, CHEFE_DA, AUX_DA)
    */
   canValidateInsalubrity(role?: AdminRole | string): boolean {
     if (!role) return false;
@@ -253,7 +255,8 @@ export const rbacService = {
       r === 'SUPER_ADMIN' ||
       r === 'RH_ADMIN' ||
       r === 'CHEFE_CANTEIRO' ||
-      r === 'CHEFE_DA'
+      r === 'CHEFE_DA' ||
+      r === 'AUX_DA'
     );
   },
 
@@ -282,14 +285,23 @@ export const rbacService = {
   },
 
   /**
-   * Checa se o usuário pode gerenciar contracheques e importação da folha
+   * Checa se o usuário pode gerenciar contracheques e importação da folha.
+   * O auxiliar de DA herda a capacidade operacional de entrada de dados
+   * administrativa do DA, com a interface menor e mais simples.
    */
   canManagePaystubs(role?: AdminRole | string): boolean {
-    return this.hasGlobalAccess(role);
+    if (!role) return false;
+    const r = this.normalizeRole(role);
+    return (
+      r === 'SUPER_ADMIN' ||
+      r === 'RH_ADMIN' ||
+      r === 'CHEFE_DA' ||
+      r === 'AUX_DA'
+    );
   },
 
   canImportFolha(role?: AdminRole | string): boolean {
-    return this.hasGlobalAccess(role);
+    return this.canManagePaystubs(role);
   },
 
   /**
