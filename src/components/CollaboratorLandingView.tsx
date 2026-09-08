@@ -85,7 +85,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   // Filter for date range on authenticated employee statement
-  const [periodFilter, setPeriodFilter] = useState<'ALL' | '30D' | '90D' | '180D'>('ALL');
+  const [periodFilter, setPeriodFilter] = useState<'CURRENT' | 'ALL' | '30D' | '90D' | '180D'>('CURRENT');
   const [isMobileRecordsOpen, setIsMobileRecordsOpen] = useState(false);
 
   const formatCPF = (val: string) => {
@@ -190,7 +190,9 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
 
     // Filter by period
     const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const filteredRecords = empRecords.filter((rec) => {
+      if (periodFilter === 'CURRENT') return rec.dataRegistro.startsWith(currentMonth);
       if (periodFilter === 'ALL') return true;
       const recDate = new Date(rec.dataRegistro);
       const diffDays = (now.getTime() - recDate.getTime()) / (1000 * 3600 * 24);
@@ -217,10 +219,16 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
     const totalAtestados = empRecords.filter((r) => r.tipoOcorrencia === 'ATESTADO_MEDICO').length;
 
     // Colaborador Insalubridade Records
-    const collabInsalubrities = insalubrityRecords.filter(
+    const employeeInsalubrities = insalubrityRecords.filter(
       (ins) => ins.matricula.trim().toUpperCase() === empMat ||
                ins.matricula.replace(/^0+/, '').toUpperCase() === empMat.replace(/^0+/, '')
     );
+    const latestInsalubrityMonths = Array.from(new Set(
+      employeeInsalubrities.map((ins) => ins.dataEvento.slice(0, 7)).filter(Boolean)
+    )).sort((a, b) => b.localeCompare(a)).slice(0, 3);
+    const collabInsalubrities = employeeInsalubrities
+      .filter((ins) => latestInsalubrityMonths.includes(ins.dataEvento.slice(0, 7)))
+      .sort((a, b) => b.dataEvento.localeCompare(a.dataEvento));
 
     // Status: POSITIVO, NEGATIVO, ZERADO
     const statusSaldo: 'POSITIVO' | 'NEGATIVO' | 'ZERADO' = 
@@ -249,7 +257,8 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
         const pMat = p.matricula.trim().toUpperCase();
         return pMat === empMat || pMat.replace(/^0+/, '') === empMat.replace(/^0+/, '');
       })
-      .sort((a, b) => (b.mesAno || '').localeCompare(a.mesAno || ''));
+      .sort((a, b) => (b.mesAno || '').localeCompare(a.mesAno || ''))
+      .slice(0, 3);
   }, [authenticatedEmployee, paystubs]);
 
   const currentPaystub = useMemo(() => {
@@ -1039,7 +1048,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {(['ALL', '30D', '90D', '180D'] as const).map((period) => (
+                    {(['CURRENT', 'ALL', '30D', '90D', '180D'] as const).map((period) => (
                       <button
                         key={period}
                         type="button"
@@ -1050,7 +1059,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                             : isDark ? 'bg-[#243756] text-[#94A3B8] hover:text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
-                        {period === 'ALL' ? 'Todos' : period === '30D' ? '30 Dias' : period === '90D' ? '90 Dias' : '180 Dias (Semestre)'}
+                        {period === 'CURRENT' ? 'Mês atual' : period === 'ALL' ? 'Todos' : period === '30D' ? '30 Dias' : period === '90D' ? '90 Dias' : '180 Dias (Semestre)'}
                       </button>
                     ))}
                   </div>

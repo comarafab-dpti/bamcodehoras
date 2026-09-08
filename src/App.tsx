@@ -445,6 +445,35 @@ export default function App() {
     };
   }, [initFirestoreSubscriptions, currentUser?.email, userRole, isAuthLoading]);
 
+  // O portal público precisa dos dados de consulta antes de qualquer login administrativo.
+  useEffect(() => {
+    if (currentUser) return;
+
+    const unsubEmployees = firestoreService.subscribeEmployees(
+      (items) => setEmployees(items),
+      () => setEmployees((items) => items.length > 0 ? items : storageService.getEmployees())
+    );
+    const unsubRecords = firestoreService.subscribeTimeRecords(
+      (items) => setRecords(items),
+      () => setRecords((items) => items.length > 0 ? items : storageService.getTimeRecords())
+    );
+    const unsubInsalubrity = firestoreService.subscribeInsalubrityRecords(
+      (items) => setInsalubrityRecords(items),
+      () => setInsalubrityRecords((items) => items.length > 0 ? items : storageService.getInsalubrityRecords())
+    );
+    const unsubPaystubs = firestoreService.subscribePaystubs(
+      (items) => setPaystubs(items),
+      () => setPaystubs((items) => items.length > 0 ? items : storageService.getPaystubs())
+    );
+
+    return () => {
+      unsubEmployees();
+      unsubRecords();
+      unsubInsalubrity();
+      unsubPaystubs();
+    };
+  }, [currentUser]);
+
 
   // -------------------------------------------------------------
   // 2. Monitor and Enforce Strict RBAC on Authentication State
