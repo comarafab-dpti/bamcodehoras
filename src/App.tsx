@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Employee, TimeRecord, Attachment, AdminUser, AdminRole, AuthSession, InsalubrityRecord, SystemConfig, GrauInsalubridade, ConstructionSite, PaystubRecord, DispensaSptfRecord } from './types';
-import { storageService } from './services/storageService';
-import { firestoreService, BatchProgressInfo } from './services/firestoreService';
-import { localCache, CACHE_KEYS } from './services/localCache';
-import { seedService } from './services/seedService';
-import { auth, googleProvider, testFirestoreConnection, isPermissionError, isQuotaError } from './services/firebase';
-import { authService, isMasterAdminEmail, getFirebaseAuthErrorMessage } from './services/authService';
+import { Employee, TimeRecord, Attachment, AdminUser, AdminRole, AuthSession, InsalubrityRecord, SystemConfig, GrauInsalubridade, ConstructionSite, PaystubRecord, DispensaSptfRecord } from './shared/types';
+import { storageService } from './shared/services/storageService';
+import { firestoreService, BatchProgressInfo } from './shared/services/firestoreService';
+import { seedService } from './shared/services/seedService';
+import { auth, googleProvider, testFirestoreConnection, isPermissionError, isQuotaError } from './shared/services/firebase';
+import { authService, isMasterAdminEmail, getFirebaseAuthErrorMessage } from './shared/services/authService';
 import { 
   onAuthStateChanged, 
   signInWithPopup,
@@ -15,47 +14,46 @@ import {
   User as FirebaseUser 
 } from 'firebase/auth';
 
-import { Navbar, ActiveTab, UserMode } from './components/Navbar';
-import { LookerDashboard } from './components/LookerDashboard';
-import { EmployeeManagement } from './components/EmployeeManagement';
-import { EmployeeStatement } from './components/EmployeeStatement';
-import { EmployeeSelfServicePortal } from './components/EmployeeSelfServicePortal';
-import { AdminPermissionsManagement } from './components/AdminPermissionsManagement';
-import { SettingsPage } from './components/SettingsPage';
-import { BackupRestorePanel } from './components/BackupRestorePanel';
-import { GoogleArchitectureSpec } from './components/GoogleArchitectureSpec';
-import { AdminLockScreen } from './components/AdminLockScreen';
-import { CollaboratorLandingView } from './components/CollaboratorLandingView';
-import { AdminLoginModal } from './components/AdminLoginModal';
-import { DailyEntryModal } from './components/DailyEntryModal';
-import { QuickBatchEntryModal } from './components/QuickBatchEntryModal';
-import { SptfDispensaModal } from './components/SptfDispensaModal';
-import { SiteSupervisorMobileView } from './components/SiteSupervisorMobileView';
-import { CertificatePreviewModal } from './components/CertificatePreviewModal';
-import { ImportTimeRecordsModal } from './components/ImportTimeRecordsModal';
-import { InsalubrityManagement } from './components/InsalubrityManagement';
-import { CanteirosManagement } from './components/CanteirosManagement';
-import { ExecutiveReportsView } from './components/ExecutiveReportsView';
-import { ContrachequesManagement } from './components/ContrachequesManagement';
-import { DispensasFaltasManagement } from './components/DispensasFaltasManagement';
-import { AuditTrailView } from './components/AuditTrailView';
-import { ComaraLogoModal } from './components/ComaraLogoModal';
-import { DatabaseSafetyActionModal, SafetyActionType } from './components/DatabaseSafetyActionModal';
-import { SessionTimeoutModal } from './components/SessionTimeoutModal';
-import { OfflineIndicator } from './components/OfflineIndicator';
-import { MobilePWAInstallBanner } from './components/MobilePWAInstallBanner';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { rbacService } from './services/rbacService';
-import { registrarLogAuditoria } from './services/auditService';
-import { competenciaService, CompetenciaControle } from './services/competenciaService';
-import { CompetenciaManagementModal } from './components/CompetenciaManagementModal';
+import { Navbar, ActiveTab, UserMode } from './admin/Navbar';
+import { LookerDashboard } from './admin/LookerDashboard';
+import { EmployeeManagement } from './admin/EmployeeManagement';
+import { EmployeeStatement } from './admin/EmployeeStatement';
+import { AdminPermissionsManagement } from './admin/AdminPermissionsManagement';
+import { SettingsPage } from './admin/SettingsPage';
+import { BackupRestorePanel } from './admin/BackupRestorePanel';
+import { GoogleArchitectureSpec } from './admin/GoogleArchitectureSpec';
+import { AdminLockScreen } from './admin/AdminLockScreen';
+import { CollaboratorLandingView } from './portal/CollaboratorLandingView';
+import { AdminLoginModal } from './admin/AdminLoginModal';
+import { DailyEntryModal } from './admin/DailyEntryModal';
+import { QuickBatchEntryModal } from './admin/QuickBatchEntryModal';
+import { SptfDispensaModal } from './admin/SptfDispensaModal';
+import { SiteSupervisorMobileView } from './admin/SiteSupervisorMobileView';
+import { CertificatePreviewModal } from './admin/CertificatePreviewModal';
+import { ImportTimeRecordsModal } from './admin/ImportTimeRecordsModal';
+import { InsalubrityManagement } from './admin/InsalubrityManagement';
+import { CanteirosManagement } from './admin/CanteirosManagement';
+import { ExecutiveReportsView } from './admin/ExecutiveReportsView';
+import { ContrachequesManagement } from './admin/ContrachequesManagement';
+import { DispensasFaltasManagement } from './admin/DispensasFaltasManagement';
+import { AuditTrailView } from './admin/AuditTrailView';
+import { ComaraLogoModal } from './admin/ComaraLogoModal';
+import { DatabaseSafetyActionModal, SafetyActionType } from './admin/DatabaseSafetyActionModal';
+import { SessionTimeoutModal } from './shared/components/SessionTimeoutModal';
+import { OfflineIndicator } from './shared/components/OfflineIndicator';
+import { MobilePWAInstallBanner } from './shared/components/MobilePWAInstallBanner';
+import { ProtectedRoute } from './admin/ProtectedRoute';
+import { rbacService } from './shared/services/rbacService';
+import { registrarLogAuditoria } from './shared/services/auditService';
+import { competenciaService, CompetenciaControle } from './shared/services/competenciaService';
+import { CompetenciaManagementModal } from './admin/CompetenciaManagementModal';
 import {
   getCompetenciaAnterior,
   normalizarCanteiroId,
   validarLancamentoCanteiro,
-} from './services/competenciaEngine';
-import { useInactivityTimeout } from './hooks/useInactivityTimeout';
-import { ErrorBoundary } from './components/ErrorBoundary';
+} from './shared/services/competenciaEngine';
+import { useInactivityTimeout } from './shared/hooks/useInactivityTimeout';
+import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { CheckCircle2, AlertCircle, Cloud, RefreshCw, X, Database, ShieldAlert, BookOpen, ArrowLeft, LogOut, Lock } from 'lucide-react';
 
 export interface AppUser {
@@ -101,7 +99,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedMatricula, setSelectedMatricula] = useState<string>('');
   const selectedMatriculaRef = useRef<string>(selectedMatricula);
-  const isSubscribedRef = useRef(false);
 
   useEffect(() => {
     selectedMatriculaRef.current = selectedMatricula;
@@ -298,12 +295,24 @@ export default function App() {
     return true;
   }, [competenciaControle?.status, confirmarBypassCanteiro, currentCompetencia, podeGravarNoCanteiro, showToast]);
 
-  const initFirestoreSubscriptions = useCallback(() => {
+  // -------------------------------------------------------------
+  // 1. Sync Firestore em Tempo Real — CONJUNTO ÚNICO DE SUBSCRIPTIONS
+  //    Dados operacionais (colaboradores, lançamentos, insalubridade e
+  //    contracheques) ficam sempre ativos para o portal e para a gestão,
+  //    com filtragem de canteiro (tenancy) aplicada quando o usuário
+  //    logado é restrito. Subscriptions administrativas (admins,
+  //    dispensas, canteiros e configuração) só são abertas com sessão
+  //    ativa. O efeito sempre cancela o conjunto anterior antes de
+  //    reabrir — nunca existem duas subscriptions competindo entre si.
+  // -------------------------------------------------------------
+  const initFirestoreSubscriptions = useCallback((hasSession: boolean) => {
     setIsSyncing(true);
     testFirestoreConnection();
 
-    // Subscribe to Employees in Firestore
-    const unsubEmployees = firestoreService.subscribeEmployees(
+    const unsubs: Array<() => void> = [];
+
+    // Subscribe to Employees in Firestore (sempre ativo: portal + gestão)
+    unsubs.push(firestoreService.subscribeEmployees(
       (emps) => {
         setEmployees(emps);
         setFirestoreErrorNotice(null);
@@ -316,21 +325,21 @@ export default function App() {
         setIsSyncing(false);
       },
       (err) => {
-        console.warn('Fallback local para colaboradores:', err);
-        // 1.5: Handle quota exceeded — show clear message, use cached data, don't retry
+        console.warn('Erro na sincronização de colaboradores:', err);
         if (isQuotaError(err)) {
-          setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Operando com dados em cache local.');
+          setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
         } else if (isPermissionError(err)) {
           setFirestoreErrorNotice('Erro de permissão no banco de dados. Verifique a autenticação.');
+        } else {
+          setFirestoreErrorNotice('Falha de conexão com o banco de dados. Tente reconectar.');
         }
-        setEmployees(prev => (prev.length > 0 ? prev : storageService.getEmployees()));
         setIsSyncing(false);
       },
       activeCanteiro
-    );
+    ));
 
-    // Subscribe to Time Records in Firestore
-    const unsubRecords = firestoreService.subscribeTimeRecords(
+    // Subscribe to Time Records in Firestore (sempre ativo: portal + gestão)
+    unsubs.push(firestoreService.subscribeTimeRecords(
       (recs) => {
         setRecords(recs);
         setFirestoreErrorNotice(null);
@@ -339,35 +348,20 @@ export default function App() {
         }
       },
       (err) => {
-        console.warn('Fallback local para lançamentos:', err);
-        // 1.5: Handle quota exceeded — show clear message, use cached data, don't retry
+        console.warn('Erro na sincronização de lançamentos:', err);
         if (isQuotaError(err)) {
-          setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Operando com dados em cache local.');
+          setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
         } else if (isPermissionError(err)) {
           setFirestoreErrorNotice('Erro de permissão no banco de dados. Verifique a autenticação.');
+        } else {
+          setFirestoreErrorNotice('Falha de conexão com o banco de dados. Tente reconectar.');
         }
-        setRecords(prev => (prev.length > 0 ? prev : storageService.getTimeRecords()));
       },
       activeCanteiro
-    );
+    ));
 
-    // Realtime subscription para admin_users no Firestore (com fallback local seguro)
-    const unsubAdmins = firestoreService.subscribeAdmins(
-      (admins) => {
-        const cleaned = admins.filter(a => a.email && !a.email.includes('@empresa.com.br') && a.email !== 'admin@comara.mil.br');
-        setAdminUsers(cleaned);
-        if (cleaned.length > 0) {
-          storageService.saveAdmins(cleaned);
-        }
-      },
-      (err) => {
-        console.warn('Fallback local para administradores:', err);
-        setAdminUsers(prev => (prev.length > 0 ? prev : storageService.getAdmins()));
-      }
-    );
-
-    // Subscribe to Insalubrity Records in Firestore
-    const unsubInsalubrity = firestoreService.subscribeInsalubrityRecords(
+    // Subscribe to Insalubrity Records in Firestore (sempre ativo: portal + gestão)
+    unsubs.push(firestoreService.subscribeInsalubrityRecords(
       (items) => {
         setInsalubrityRecords(items);
         if (items.length > 0) {
@@ -375,33 +369,16 @@ export default function App() {
         }
       },
       (err) => {
-        console.warn('Fallback local para insalubridade:', err);
-        setInsalubrityRecords(prev => (prev.length > 0 ? prev : storageService.getInsalubrityRecords()));
+        console.warn('Erro na sincronização de insalubridade:', err);
+        if (isQuotaError(err)) {
+          setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
+        }
       },
       activeCanteiro
-    );
+    ));
 
-    // 1.2/1.3: canteiros_obras — one-time fetch with local cache instead of onSnapshot listener
-    firestoreService.getConstructionSites().then((sites) => {
-      setConstructionSites(sites);
-    }).catch((err) => {
-      console.warn('Fallback para canteiros:', err);
-    });
-
-    // 1.2/1.3: system_config — one-time fetch with local cache instead of onSnapshot listener
-    firestoreService.getSystemConfigOnce().then((cfg) => {
-      if (cfg) {
-        setSystemConfig(cfg);
-        storageService.saveSystemConfig(cfg);
-      }
-    }).catch((err) => {
-      console.warn('Fallback local para system config:', err);
-      const local = storageService.getSystemConfig();
-      setSystemConfig(local);
-    });
-
-    // Subscribe to Paystubs (Contracheques Digitais) in Firestore
-    const unsubPaystubs = firestoreService.subscribePaystubs(
+    // Subscribe to Paystubs (Contracheques Digitais) in Firestore (sempre ativo: portal + gestão)
+    unsubs.push(firestoreService.subscribePaystubs(
       (items) => {
         setPaystubs(items);
         if (items.length > 0) {
@@ -409,102 +386,115 @@ export default function App() {
         }
       },
       (err) => {
-        console.warn('Fallback para contracheques:', err);
-        setPaystubs(prev => (prev.length > 0 ? prev : storageService.getPaystubs()));
-      },
-      activeCanteiro
-    );
-
-    // Subscribe to Dispensas de SPTF in Firestore
-    const unsubDispensas = firestoreService.subscribeDispensasSptf(
-      (items) => {
-        setDispensasSptf(items);
-        if (items.length > 0) {
-          storageService.saveDispensasSptf(items);
+        console.warn('Erro na sincronização de contracheques:', err);
+        if (isQuotaError(err)) {
+          setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
         }
       },
-      (err) => {
-        console.warn('Fallback local para dispensas SPTF:', err);
-        setDispensasSptf(prev => (prev.length > 0 ? prev : storageService.getDispensasSptf()));
-      },
       activeCanteiro
-    );
+    ));
+
+    // -------------------------------------------------------------
+    // Subscriptions exclusivas da gestão (exigem sessão autenticada)
+    // -------------------------------------------------------------
+    if (hasSession) {
+      // admin_users: leitura restrita por Rules (apenas perfis globais
+      // conseguem listar a coleção inteira; falhas são silenciosas)
+      if (isGlobalUser) {
+        unsubs.push(firestoreService.subscribeAdmins(
+          (admins) => {
+            const cleaned = admins.filter(a => a.email && !a.email.includes('@empresa.com.br') && a.email !== 'admin@comara.mil.br');
+            setAdminUsers(cleaned);
+            if (cleaned.length > 0) {
+              storageService.saveAdmins(cleaned);
+            }
+          },
+          (err) => {
+            console.warn('Sincronização de administradores indisponível para este perfil:', err);
+          }
+        ));
+      }
+
+      // Subscribe to Dispensas de SPTF in Firestore
+      unsubs.push(firestoreService.subscribeDispensasSptf(
+        (items) => {
+          setDispensasSptf(items);
+          if (items.length > 0) {
+            storageService.saveDispensasSptf(items);
+          }
+        },
+        (err) => {
+          console.warn('Erro na sincronização de dispensas SPTF:', err);
+          if (isQuotaError(err)) {
+            setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
+          }
+        },
+        activeCanteiro
+      ));
+
+      // Canteiros de obras em tempo real (onSnapshot — sem cache com TTL)
+      unsubs.push(firestoreService.subscribeConstructionSites(
+        (sites) => {
+          setConstructionSites(sites);
+        },
+        (err) => {
+          console.warn('Erro na sincronização de canteiros:', err);
+        }
+      ));
+
+      // Configuração do sistema em tempo real (onSnapshot — sem cache com TTL)
+      unsubs.push(firestoreService.subscribeSystemConfig(
+        (cfg) => {
+          setSystemConfig(cfg);
+          storageService.saveSystemConfig(cfg);
+        },
+        (err) => {
+          console.warn('Erro na sincronização da configuração do sistema:', err);
+        }
+      ));
+    }
 
     return () => {
-      try {
-        if (typeof unsubEmployees === 'function') unsubEmployees();
-      } catch (e) {
-        console.warn('Erro ao cancelar listener de colaboradores:', e);
-      }
-      try {
-        if (typeof unsubRecords === 'function') unsubRecords();
-      } catch (e) {
-        console.warn('Erro ao cancelar listener de lançamentos:', e);
-      }
-      try {
-        if (typeof unsubInsalubrity === 'function') unsubInsalubrity();
-      } catch (e) {
-        console.warn('Erro ao cancelar listener de insalubridade:', e);
-      }
-      try {
-        if (typeof unsubPaystubs === 'function') unsubPaystubs();
-      } catch (e) {
-        console.warn('Erro ao cancelar listener de contracheques:', e);
-      }
-      try {
-        if (typeof unsubDispensas === 'function') unsubDispensas();
-      } catch (e) {
-        console.warn('Erro ao cancelar listener de dispensas SPTF:', e);
-      }
-      try {
-        if (typeof unsubAdmins === 'function') unsubAdmins();
-      } catch (e) {
-        console.warn('Erro ao cancelar listener de administradores:', e);
-      }
+      unsubs.forEach((u) => {
+        try {
+          if (typeof u === 'function') u();
+        } catch (e) {
+          console.warn('Erro ao cancelar listener:', e);
+        }
+      });
     };
-  }, [userRole, activeCanteiro]);
+  }, [userRole, activeCanteiro, isGlobalUser]);
 
+  // Um único efeito gerencia o ciclo de vida das subscriptions.
+  // O cleanup do efeito cancela o conjunto anterior antes de reabrir,
+  // eliminando qualquer competição entre listeners no login/logout.
   useEffect(() => {
-    // 1.4: Guard against duplicate listeners — only subscribe when user is verified
-    if (isSubscribedRef.current) return;
     if (isAuthLoading) return;
-    if (!currentUser || !userRole) return;
-    isSubscribedRef.current = true;
-    const cleanup = initFirestoreSubscriptions();
+    const cleanup = initFirestoreSubscriptions(!!currentUser);
     return () => {
-      isSubscribedRef.current = false;
       if (typeof cleanup === 'function') cleanup();
     };
-  }, [initFirestoreSubscriptions, currentUser?.email, userRole, isAuthLoading]);
+  }, [initFirestoreSubscriptions, currentUser?.email, isAuthLoading]);
 
-  // O portal público precisa dos dados de consulta antes de qualquer login administrativo.
+  // -------------------------------------------------------------
+  // Rotas simplificadas: /admin (gestão) e /portal (colaborador)
+  // -------------------------------------------------------------
   useEffect(() => {
-    if (currentUser) return;
+    if (isAuthLoading) return;
+    // Preserva /admin aguardando login de gestão (modal aberto abaixo)
+    if (!currentUser && window.location.pathname.startsWith('/admin')) return;
+    const target = currentUser ? '/admin' : '/portal';
+    if (window.location.pathname !== target) {
+      window.history.replaceState({}, '', target);
+    }
+  }, [currentUser, isAuthLoading]);
 
-    const unsubEmployees = firestoreService.subscribeEmployees(
-      (items) => setEmployees(items),
-      () => setEmployees((items) => items.length > 0 ? items : storageService.getEmployees())
-    );
-    const unsubRecords = firestoreService.subscribeTimeRecords(
-      (items) => setRecords(items),
-      () => setRecords((items) => items.length > 0 ? items : storageService.getTimeRecords())
-    );
-    const unsubInsalubrity = firestoreService.subscribeInsalubrityRecords(
-      (items) => setInsalubrityRecords(items),
-      () => setInsalubrityRecords((items) => items.length > 0 ? items : storageService.getInsalubrityRecords())
-    );
-    const unsubPaystubs = firestoreService.subscribePaystubs(
-      (items) => setPaystubs(items),
-      () => setPaystubs((items) => items.length > 0 ? items : storageService.getPaystubs())
-    );
-
-    return () => {
-      unsubEmployees();
-      unsubRecords();
-      unsubInsalubrity();
-      unsubPaystubs();
-    };
-  }, [currentUser]);
+  // Acesso direto à rota /admin sem sessão abre o login de gestão imediatamente
+  useEffect(() => {
+    if (!isAuthLoading && !currentUser && window.location.pathname.startsWith('/admin')) {
+      setIsAdminLoginModalOpen(true);
+    }
+  }, [isAuthLoading, currentUser]);
 
 
   // -------------------------------------------------------------
@@ -1558,7 +1548,6 @@ export default function App() {
     const rawAuxDa = site.auxDa || '';
     try {
       await firestoreService.saveConstructionSite(site);
-      localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
       const id = site.id || `canteiro-${String(rawCode).toLowerCase()}`;
       const updatedSite = {
         id,
@@ -1625,7 +1614,6 @@ export default function App() {
     const targetSite = constructionSites.find(s => s.id === id);
     try {
       await firestoreService.deleteConstructionSite(id);
-      localCache.clearCache(CACHE_KEYS.CANTEIROS_OBRAS);
       setConstructionSites((prev) => prev.filter((site) => site.id !== id));
       showToast('Canteiro de obras removido com sucesso.');
 
@@ -1855,7 +1843,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button 
-                onClick={() => initFirestoreSubscriptions()}
+                onClick={() => initFirestoreSubscriptions(!!currentUser)}
                 className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 rounded text-[11px] font-bold text-amber-200 transition-colors"
               >
                 <RefreshCw className="w-3 h-3" />
@@ -1995,7 +1983,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => initFirestoreSubscriptions()}
+              onClick={() => initFirestoreSubscriptions(!!currentUser)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-[11px] font-bold text-amber-200 transition-colors"
             >
               <RefreshCw className="w-3 h-3" />
@@ -2224,15 +2212,6 @@ export default function App() {
               onViewAttachment={handleViewAttachment}
               onUpdateEmployees={handleUpdateEmployees}
               onEmployeeSaved={handleEmployeeSaved}
-              theme={theme}
-            />
-          )}
-
-          {activeTab === 'portal_colaborador' && (
-            <EmployeeSelfServicePortal
-              employees={employees}
-              records={records}
-              paystubs={paystubs}
               theme={theme}
             />
           )}
