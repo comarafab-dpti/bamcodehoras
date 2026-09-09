@@ -16,13 +16,32 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="description" content="Sistema de Gestão de Banco de Horas SPTF • COMARA" />
-    <meta property="og:title" content="COMARA • Sistema de Gestão de Banco de Horas SPTF" />
-    <meta property="og:description" content="Sistema de Gestão de Banco de Horas SPTF com regras consolidadas, validação de segurança e conformidade LGPD." />
+    <meta name="description" content="Sistema oficial de gestão de Banco de Horas SPTF da COMARA com regras automáticas, emissão de dispensas em 2 vias, gestão de contracheques, laudos de insalubridade, trilha de auditoria e logs de segurança LGPD no Cloud Firestore." />
+    <meta property="og:title" content="Sistema de Gestão de Banco de Horas SPTF" />
+    <meta property="og:description" content="Sistema oficial de gestão de Banco de Horas SPTF da COMARA com regras automáticas, emissão de dispensas em 2 vias, gestão de contracheques, laudos de insalubridade, trilha de auditoria e logs de segurança LGPD no Cloud Firestore." />
     <meta property="og:image" content="/logo.png" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="/logo.png" />
+    <script>
+      (function () {
+        var hostname = window.location.hostname.toLowerCase();
+        var pathname = window.location.pathname.toLowerCase();
+        var search = window.location.search;
+        var hash = window.location.hash;
+        var isAdmin = hostname === 'admbancodehoras.ai.studio' || pathname.startsWith('/admin');
+
+        if (isAdmin) {
+          if (!pathname.startsWith('/admin') && !pathname.endsWith('admin.html')) {
+            window.location.replace('/admin' + search + hash);
+          }
+        } else {
+          if (pathname === '/' || pathname === '/index.html') {
+            window.location.replace('/portal' + search + hash);
+          }
+        }
+      })();
+    </script>
   </head>
   <body class="notranslate" translate="no">
     <div id="root" class="notranslate" translate="no"></div>

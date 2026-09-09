@@ -157,18 +157,16 @@ service cloud.firestore {
      */
     function documentoDoMeuCanteiro(data) {
       let meu = meuCanteiro();
-
-      if (meu == '') {
-        return false;
-      }
-
       let sedeCodigo = data.get('sedeCodigo', '');
       let employeeSede = data.get('employeeSede', '');
       let sede = data.get('sede', '');
 
-      return (sedeCodigo != '' && sedeCodigo == meu)
-        || (employeeSede != '' && employeeSede == meu)
-        || (sede != '' && sede == meu);
+      return meu != ''
+        && (
+          (sedeCodigo != '' && sedeCodigo == meu)
+          || (employeeSede != '' && employeeSede == meu)
+          || (sede != '' && sede == meu)
+        );
     }
 
     /*
@@ -176,17 +174,11 @@ service cloud.firestore {
      * employeeSede (padrão), sedeCodigo ou sede (canônico/legado).
      */
     function canteiroDoDocumento(data) {
-      let sede = data.get('employeeSede', '');
+      let employeeSede = data.get('employeeSede', '');
+      let sedeCodigo = data.get('sedeCodigo', '');
+      let sede = data.get('sede', '');
 
-      if (sede == '') {
-        sede = data.get('sedeCodigo', '');
-      }
-
-      if (sede == '') {
-        sede = data.get('sede', '');
-      }
-
-      return sede;
+      return employeeSede != '' ? employeeSede : (sedeCodigo != '' ? sedeCodigo : sede);
     }
 
     function canteiroPermitido(canteiro) {
@@ -205,19 +197,15 @@ service cloud.firestore {
      * o código do próprio canteiro.
      */
     function contrachequeCanteiroPermitido(data) {
-      if (isGlobalAdmin()) {
-        return true;
-      }
-
       let meu = meuCanteiro().lower();
-
-      if (meu == '') {
-        return false;
-      }
-
       let sede = string(data.get('sede', '')).lower();
 
-      return sede != '' && sede.matches('.*' + meu + '.*');
+      return isGlobalAdmin()
+        || (
+          meu != ''
+          && sede != ''
+          && sede.matches('.*' + meu + '.*')
+        );
     }
 
     // ============================================================
@@ -351,20 +339,9 @@ service cloud.firestore {
       let ref =
         /databases/$(database)/documents/competencias_controle/$(anterior);
 
-      // Sem documento de controle do mês anterior = liberado
-      if (!exists(ref)) {
-        return true;
-      }
-
-      let controle = get(ref).data.get('statusCanteiros', {});
-      let registro = controle.get(canteiro, null);
-
-      // Canteiro sem registro no mapa = liberado
-      if (registro == null) {
-        return true;
-      }
-
-      return registro.get('status', 'ABERTO') == 'FECHADO';
+      return !exists(ref)
+        || get(ref).data.get('statusCanteiros', {}).get(canteiro, null) == null
+        || get(ref).data.get('statusCanteiros', {}).get(canteiro, {}).get('status', 'ABERTO') == 'FECHADO';
     }
 
     function lancamentoCompetenciaPermitido(data) {

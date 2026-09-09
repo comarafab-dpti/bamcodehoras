@@ -87,7 +87,7 @@ export default function PortalApp() {
       insalubrityRecords={insalubrityRecords}
       paystubs={paystubs}
       onOpenAdminLogin={() => {
-        window.location.assign('/admin.html');
+        window.location.assign('/admin');
       }}
       theme={theme}
       onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
