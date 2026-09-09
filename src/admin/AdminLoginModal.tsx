@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { authService, DEFAULT_MASTER_ACCOUNTS } from '@/src/shared/services/authService';
 import { ComaraLogo } from '@/src/shared/components/ComaraLogo';
+import { ModuleBadge } from '@/src/shared/components/ModuleBadge';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -169,11 +170,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           <div className="flex justify-center mb-1">
             <ComaraLogo size="lg" />
           </div>
+          <div className="flex justify-center">
+            <ModuleBadge tipo="admin" size="sm" />
+          </div>
           <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
             Acesso à Gestão & RH • COMARA
           </h2>
-          <p className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-            Autenticação corporativa para Gestores, Encarregados e Administradores
+          <p className={`text-xs ${isDark ? 'text-[#94A3B8]' : 'text-slate-400'}`}>
+            Ambiente exclusivo para Gestores, Encarregados e Administradores
           </p>
         </div>
 
@@ -329,9 +333,18 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           <span>Acesso corporativo restrito às contas cadastradas na matriz de permissões RBAC da Organização Militar.</span>
         </div>
 
-        {/* Footer info */}
-        <div className={`pt-1 text-center text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-          <span>COMARA • Comissão de Aeroportos da Região Amazônica / FAB</span>
+        {/* Footer info & link to portal */}
+        <div className="pt-2 border-t border-slate-700/40 text-center space-y-1.5">
+          <a
+            href="/portal"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+          >
+            <span>Não é administrador? Acessar o Portal do Colaborador</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+          <p className={`text-[10px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+            COMARA • Comissão de Aeroportos da Região Amazônica / FAB
+          </p>
         </div>
 
       </div>

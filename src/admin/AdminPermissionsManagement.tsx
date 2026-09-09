@@ -105,13 +105,11 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
         a.email !== 'admin@comara.mil.br'
       );
 
-      const masterEmail = 'coari.comara@gmail.com';
-      const hasMaster = cleanedList.some(a => a.email.toLowerCase() === masterEmail.toLowerCase());
       let fullList = [...cleanedList];
-      if (!hasMaster) {
+      if (cleanedList.length === 0) {
         fullList.unshift({
           id: 'adm-super-master',
-          email: masterEmail,
+          email: 'coari.comara@gmail.com',
           nome: 'Coari Comara (Administrador Geral)',
           cargo: 'Super Administrador TI / RH',
           funcao: 'Super Administrador TI / RH',
@@ -158,13 +156,11 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
         a.email !== 'admin@comara.mil.br'
       );
 
-      const masterEmail = 'coari.comara@gmail.com';
-      const hasMaster = cleanedList.some(a => a.email.toLowerCase() === masterEmail.toLowerCase());
       let fullList = [...cleanedList];
-      if (!hasMaster) {
+      if (cleanedList.length === 0) {
         fullList.unshift({
           id: 'adm-super-master',
-          email: masterEmail,
+          email: 'coari.comara@gmail.com',
           nome: 'Coari Comara (Administrador Geral)',
           cargo: 'Super Administrador TI / RH',
           funcao: 'Super Administrador TI / RH',
@@ -194,7 +190,9 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
     (a) => a.ativo && a.email.toLowerCase() === currentUserEmail.toLowerCase()
   );
 
-  const isCurrentSuperAdmin = isMasterAdminEmail(currentUserEmail) || currentAdmin?.nivelAcesso === 'SUPER_ADMIN' || currentAdmin?.role === 'SUPER_ADMIN';
+  const isCurrentSuperAdmin = currentAdmin
+    ? (currentAdmin.nivelAcesso === 'SUPER_ADMIN' || currentAdmin.role === 'SUPER_ADMIN')
+    : (admins.length === 0 && isMasterAdminEmail(currentUserEmail));
 
   // Toggle Row Expansion
   const toggleRow = (id: string) => {

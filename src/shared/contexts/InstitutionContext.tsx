@@ -76,10 +76,7 @@ export const InstitutionProvider: React.FC<InstitutionProviderProps> = ({
   const canEditSettings = useMemo(() => {
     if (!activeUser) return false;
     const role = rbacService.normalizeRole(activeUser.role);
-    const email = (activeUser.email || '').toLowerCase();
-    return role === 'SUPER_ADMIN' || 
-      email === 'comarafab@gmail.com' || 
-      email === 'coari.comara@gmail.com';
+    return role === 'SUPER_ADMIN';
   }, [activeUser]);
 
   // Inicia a assinatura em tempo real via onSnapshot do Firestore
