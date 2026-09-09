@@ -1,8 +1,8 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { InstitutionProvider } from './contexts/InstitutionContext';
+import { ErrorBoundary } from './shared/components/ErrorBoundary';
+import { InstitutionProvider } from './shared/contexts/InstitutionContext';
 import './index.css';
 
 // Registro do Service Worker do PWA
