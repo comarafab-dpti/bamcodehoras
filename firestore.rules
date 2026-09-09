@@ -401,7 +401,14 @@ service cloud.firestore {
        * tela exibe apenas os dados do colaborador autenticado.
        * Escrita permanece restrita por perfil e por competência.
        */
-      allow read: if true;
+      allow read: if
+        isGlobalAdmin()
+        || (isColaborador() && pertenceAoColaborador(resource.data))
+        || (
+          isAdminActive()
+          && (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        );
 
       // Criar lançamento
       allow create: if
@@ -438,6 +445,7 @@ service cloud.firestore {
       // (campo employeeSede gravado na emissão da guia).
       allow read: if
         isGlobalAdmin()
+        || (isColaborador() && pertenceAoColaborador(resource.data))
         || (
           (isGerenteCanteiro() || isDA())
           && documentoDoMeuCanteiro(resource.data)
@@ -476,7 +484,14 @@ service cloud.firestore {
        * contracheque após validação de senha no app.
        * Perfis restritos filtram pelo próprio canteiro.
        */
-      allow read: if true;
+      allow read: if
+        isGlobalAdmin()
+        || (isColaborador() && pertenceAoColaborador(resource.data))
+        || (
+          isAdminActive()
+          && (isGerenteCanteiro() || isDA())
+          && contrachequeCanteiroPermitido(resource.data)
+        );
 
       /*
        * Importação de folha NÃO exige competência aberta/fechada:
@@ -509,7 +524,14 @@ service cloud.firestore {
        * Leitura pública: o Portal do Colaborador consulta os
        * apontamentos após validação de senha no app.
        */
-      allow read: if true;
+      allow read: if
+        isGlobalAdmin()
+        || (isColaborador() && pertenceAoColaborador(resource.data))
+        || (
+          isAdminActive()
+          && (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        );
 
       allow create: if
         podeLancar()
@@ -695,19 +717,16 @@ service cloud.firestore {
     // ============================================================
 
     /*
-     * MODELO DE PORTAL PÚBLICO:
+    * MODELO DE PORTAL COM CUSTOM TOKEN:
      *
-     * O portal localiza o colaborador por matrícula/CPF e valida a
-     * senha no app. Por isso a leitura é pública; a escrita é
-     * exclusiva de perfis globais (RH/TI).
-     *
-     * Recomendação futura: migrar a validação de senha para Cloud
-     * Function com Firebase Custom Token para restringir a leitura
-     * ao próprio colaborador (ver comentário na seção 20).
+    * A Cloud Function valida a senha e emite a claim matricula. O
+    * documento retornado precisa pertencer à matrícula autenticada.
      */
     match /colaboradores/{doc} {
 
-      allow read: if true;
+      allow read: if
+        isGlobalAdmin()
+        || (isColaborador() && pertenceAoColaborador(resource.data));
 
       // Somente perfis globais (RH/TI) escrevem cadastros.
       allow create, update, delete: if
@@ -719,21 +738,13 @@ service cloud.firestore {
     // ============================================================
 
     /*
-     * MODELO DE SEGURANÇA MÍNIMA (acordado):
-     *
-     * - Leitura pública: o portal valida a senha no app comparando
-     *   o hash SHA-256 armazenado (não há Firebase Auth para
-     *   colaboradores e não existe Cloud Function no projeto).
-     * - Escrita restrita a perfis globais (RH define senha inicial
-     *   e redefinições presenciais).
-     *
-     * ATENÇÃO: com a leitura pública, o hash fica exposto a quem
-     * tiver a chave da API. Migração recomendada: Cloud Function
-     * de validação + Firebase Custom Token.
+    * A leitura de colaboradores_auth é exclusiva da administração.
+    * A Cloud Function é a única camada que deve acessar o hash da
+    * senha para emitir o Firebase Custom Token.
      */
     match /colaboradores_auth/{doc} {
 
-      allow read: if true;
+      allow read: if isGlobalAdmin();
 
       allow create, update: if
         isGlobalAdmin();

@@ -4,7 +4,7 @@ import { storageService } from './shared/services/storageService';
 import { firestoreService, BatchProgressInfo } from './shared/services/firestoreService';
 import { seedService } from './shared/services/seedService';
 import { auth, googleProvider, testFirestoreConnection, isPermissionError, isQuotaError } from './shared/services/firebase';
-import { authService, isMasterAdminEmail, getFirebaseAuthErrorMessage } from './shared/services/authService';
+import { authService, getFirebaseAuthErrorMessage } from './shared/services/authService';
 import { 
   onAuthStateChanged, 
   signInWithPopup,
@@ -23,7 +23,6 @@ import { SettingsPage } from './admin/SettingsPage';
 import { BackupRestorePanel } from './admin/BackupRestorePanel';
 import { GoogleArchitectureSpec } from './admin/GoogleArchitectureSpec';
 import { AdminLockScreen } from './admin/AdminLockScreen';
-import { CollaboratorLandingView } from './portal/CollaboratorLandingView';
 import { AdminLoginModal } from './admin/AdminLoginModal';
 import { DailyEntryModal } from './admin/DailyEntryModal';
 import { QuickBatchEntryModal } from './admin/QuickBatchEntryModal';
@@ -90,11 +89,15 @@ export default function App() {
   // Firestore Data State
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
-  const [insalubrityRecords, setInsalubrityRecords] = useState<InsalubrityRecord[]>(() => storageService.getInsalubrityRecords());
+  const [insalubrityRecords, setInsalubrityRecords] = useState<InsalubrityRecord[]>([]);
   const [dispensasSptf, setDispensasSptf] = useState<DispensaSptfRecord[]>([]);
   const [constructionSites, setConstructionSites] = useState<ConstructionSite[]>([]);
   const [paystubs, setPaystubs] = useState<PaystubRecord[]>([]);
-  const [systemConfig, setSystemConfig] = useState<SystemConfig>(() => storageService.getSystemConfig());
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>({
+    logoUrl: '',
+    companyName: 'COMARA',
+    subtitle: 'Comissão de Aeroportos da Região Amazônica',
+  });
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedMatricula, setSelectedMatricula] = useState<string>('');
@@ -119,6 +122,22 @@ export default function App() {
   // Firestore Status / Error Handling State
   const [firestoreErrorNotice, setFirestoreErrorNotice] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [collectionLoading, setCollectionLoading] = useState({
+    colaboradores: true,
+    lancamentos: true,
+    insalubridade: true,
+    contracheques: true,
+    dispensas: true,
+    competencias: true,
+    admins: true,
+    canteiros: true,
+    configuracao: true,
+  });
+
+  const markCollectionLoaded = useCallback((collection: keyof typeof collectionLoading) => {
+    setCollectionLoading((current) => ({ ...current, [collection]: false }));
+  }, []);
+  const isInitialDataLoading = Object.values(collectionLoading).some(Boolean);
 
   // Batch Progress State (para grandes lotes de 4.500+ registros)
   const [batchProgress, setBatchProgress] = useState<{
@@ -182,8 +201,14 @@ export default function App() {
   useEffect(() => {
     const unsubscribeAtual = competenciaService.subscribeControleCompetencia(
       currentCompetencia,
-      setCompetenciaControle,
-      (error) => console.warn('Erro no listener de competência:', error),
+      (controle) => {
+        setCompetenciaControle(controle);
+        markCollectionLoaded('competencias');
+      },
+      (error) => {
+        console.warn('Erro no listener de competência:', error);
+        markCollectionLoaded('competencias');
+      },
     );
     const unsubscribeAnterior = competenciaService.subscribeControleCompetencia(
       getCompetenciaAnterior(currentCompetencia),
@@ -199,7 +224,7 @@ export default function App() {
       unsubscribeAnterior();
       unsubscribeTodas();
     };
-  }, [currentCompetencia]);
+  }, [currentCompetencia, markCollectionLoaded]);
 
   // Debounce de 250ms na navegação de competência (Requisito 6C da especificação):
   // cliques acelerados em avançar/voltar executam apenas a leitura da competência final.
@@ -226,7 +251,7 @@ export default function App() {
   const currentUserCanteiro = currentUser ? rbacService.getUserCanteiroId(currentUser) : undefined;
   const isGlobalUser = rbacService.isGlobalRole(userRole);
   const activeCanteiro = !isGlobalUser ? currentUserCanteiro : undefined;
-  const isSuperAdminSession = userRole === 'SUPER_ADMIN' || isMasterAdminEmail(currentUser?.email || '');
+  const isSuperAdminSession = userRole === 'SUPER_ADMIN';
 
   // Filtragem rigorosa por Tenancy para isolamento de canteiro/OU (ex: AUX_DA, CHEFE_DA)
   const tenancyEmployees = useMemo(() => {
@@ -307,6 +332,17 @@ export default function App() {
   // -------------------------------------------------------------
   const initFirestoreSubscriptions = useCallback((hasSession: boolean) => {
     setIsSyncing(true);
+    setCollectionLoading((current) => ({
+      ...current,
+      colaboradores: true,
+      lancamentos: true,
+      insalubridade: true,
+      contracheques: true,
+      dispensas: hasSession,
+      admins: hasSession && isGlobalUser,
+      canteiros: hasSession,
+      configuracao: hasSession,
+    }));
     testFirestoreConnection();
 
     const unsubs: Array<() => void> = [];
@@ -322,6 +358,7 @@ export default function App() {
         if (emps.length > 0 && !selectedMatriculaRef.current) {
           setSelectedMatricula(emps[0].matricula);
         }
+        markCollectionLoaded('colaboradores');
         setIsSyncing(false);
       },
       (err) => {
@@ -333,6 +370,7 @@ export default function App() {
         } else {
           setFirestoreErrorNotice('Falha de conexão com o banco de dados. Tente reconectar.');
         }
+        markCollectionLoaded('colaboradores');
         setIsSyncing(false);
       },
       activeCanteiro
@@ -346,6 +384,7 @@ export default function App() {
         if (recs.length > 0) {
           storageService.saveTimeRecords(recs);
         }
+        markCollectionLoaded('lancamentos');
       },
       (err) => {
         console.warn('Erro na sincronização de lançamentos:', err);
@@ -356,6 +395,7 @@ export default function App() {
         } else {
           setFirestoreErrorNotice('Falha de conexão com o banco de dados. Tente reconectar.');
         }
+        markCollectionLoaded('lancamentos');
       },
       activeCanteiro
     ));
@@ -367,12 +407,14 @@ export default function App() {
         if (items.length > 0) {
           storageService.saveInsalubrityRecords(items);
         }
+        markCollectionLoaded('insalubridade');
       },
       (err) => {
         console.warn('Erro na sincronização de insalubridade:', err);
         if (isQuotaError(err)) {
           setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
         }
+        markCollectionLoaded('insalubridade');
       },
       activeCanteiro
     ));
@@ -384,12 +426,14 @@ export default function App() {
         if (items.length > 0) {
           storageService.savePaystubs(items);
         }
+        markCollectionLoaded('contracheques');
       },
       (err) => {
         console.warn('Erro na sincronização de contracheques:', err);
         if (isQuotaError(err)) {
           setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
         }
+        markCollectionLoaded('contracheques');
       },
       activeCanteiro
     ));
@@ -408,9 +452,11 @@ export default function App() {
             if (cleaned.length > 0) {
               storageService.saveAdmins(cleaned);
             }
+            markCollectionLoaded('admins');
           },
           (err) => {
             console.warn('Sincronização de administradores indisponível para este perfil:', err);
+            markCollectionLoaded('admins');
           }
         ));
       }
@@ -422,12 +468,14 @@ export default function App() {
           if (items.length > 0) {
             storageService.saveDispensasSptf(items);
           }
+          markCollectionLoaded('dispensas');
         },
         (err) => {
           console.warn('Erro na sincronização de dispensas SPTF:', err);
           if (isQuotaError(err)) {
             setFirestoreErrorNotice('Cota do Cloud Firestore excedida. Verifique a conexão e tente reconectar.');
           }
+          markCollectionLoaded('dispensas');
         },
         activeCanteiro
       ));
@@ -436,9 +484,11 @@ export default function App() {
       unsubs.push(firestoreService.subscribeConstructionSites(
         (sites) => {
           setConstructionSites(sites);
+          markCollectionLoaded('canteiros');
         },
         (err) => {
           console.warn('Erro na sincronização de canteiros:', err);
+          markCollectionLoaded('canteiros');
         }
       ));
 
@@ -447,9 +497,11 @@ export default function App() {
         (cfg) => {
           setSystemConfig(cfg);
           storageService.saveSystemConfig(cfg);
+          markCollectionLoaded('configuracao');
         },
         (err) => {
           console.warn('Erro na sincronização da configuração do sistema:', err);
+          markCollectionLoaded('configuracao');
         }
       ));
     }
@@ -463,7 +515,7 @@ export default function App() {
         }
       });
     };
-  }, [userRole, activeCanteiro, isGlobalUser]);
+  }, [userRole, activeCanteiro, isGlobalUser, markCollectionLoaded]);
 
   // Um único efeito gerencia o ciclo de vida das subscriptions.
   // O cleanup do efeito cancela o conjunto anterior antes de reabrir,
@@ -579,36 +631,6 @@ export default function App() {
           setIsVerifyingPermissions(false);
         }
       } else {
-        // Sem sessão autenticada ativa no Firebase Auth:
-        // Verifica se há uma sessão institucional mestre salva no storage local
-        const savedSession = authService.getCurrentSession();
-        if (savedSession && isMasterAdminEmail(savedSession.email)) {
-          const appUser: AppUser = {
-            uid: `session-${savedSession.email}`,
-            email: savedSession.email,
-            nome: savedSession.nome,
-            displayName: savedSession.nome,
-            role: savedSession.role,
-            cargo: savedSession.cargo,
-            uoGestao: savedSession.uoGestao,
-            sede: savedSession.sede || 'TODAS',
-            canteiroCodigo: savedSession.canteiroCodigo || 'KO',
-            canteiroSede: savedSession.canteiroSede || 'TODAS',
-            loginTime: savedSession.loginTime || new Date().toISOString(),
-          };
-          setPendingAccessUser(null);
-          setCurrentUser(prev => {
-            if (prev && prev.email === appUser.email && prev.role === appUser.role) {
-              return prev;
-            }
-            return appUser;
-          });
-          setUserRole(appUser.role);
-          setUserMode(appUser.role === 'AUDITOR' ? 'COLABORADOR' : 'ADMIN');
-          setIsVerifyingPermissions(false);
-          return;
-        }
-
         setIsVerifyingPermissions(false);
         authService.clearSession();
         setCurrentUser(null);
@@ -1828,65 +1850,14 @@ export default function App() {
     );
   }
 
-  // -------------------------------------------------------------
-  // RENDER: PORTAL DO COLABORADOR (LANDING PAGE PADRÃO / LGPD)
-  // -------------------------------------------------------------
+  // O portal possui entry point próprio em src/portal/main.tsx.
+  // O entry administrativo nunca renderiza a experiência do colaborador.
   if (!currentUser) {
     return (
-      <div translate="no" className="notranslate min-h-screen flex flex-col">
-        {/* Banner de Aviso de Permissão (se houver) */}
-        {firestoreErrorNotice && (
-          <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 text-amber-300 text-xs flex items-center justify-between z-50">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>{firestoreErrorNotice} (O sistema está operando com dados locais seguros).</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => initFirestoreSubscriptions(!!currentUser)}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 rounded text-[11px] font-bold text-amber-200 transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Reconectar</span>
-              </button>
-              <button onClick={() => setFirestoreErrorNotice(null)} className="text-amber-400 hover:text-amber-200 p-0.5">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className={`fixed bottom-5 right-5 z-50 ${
-            isDark ? 'bg-[#16243D] text-[#E2E8F0] border-[#243756]' : 'bg-white text-slate-900 border-slate-200'
-          } px-4 py-3 rounded-xl shadow-2xl border flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-bottom-5 duration-200`}>
-            {toastMessage.type === 'error' ? (
-              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-            )}
-            <span>{toastMessage.text}</span>
-          </div>
-        )}
-
-        <ErrorBoundary fallbackTitle="Portal do Colaborador">
-          <CollaboratorLandingView
-            employees={employees}
-            records={records}
-            insalubrityRecords={insalubrityRecords}
-            paystubs={paystubs}
-            onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-            theme={theme}
-            onToggleTheme={handleToggleTheme}
-            onViewAttachment={handleViewAttachment}
-          />
-        </ErrorBoundary>
-
-        {/* Modal de Login Administrativo RH */}
+      <div className="min-h-screen flex items-center justify-center p-6">
         <AdminLoginModal
-          isOpen={isAdminLoginModalOpen}
-          onClose={() => setIsAdminLoginModalOpen(false)}
+          isOpen
+          onClose={() => undefined}
           onGoogleSignIn={handleGoogleSignIn}
           onDevAdminSignIn={handleDevAdminSignIn}
           isDark={isDark}
@@ -1979,7 +1950,7 @@ export default function App() {
         <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-amber-300 text-xs flex items-center justify-between z-40">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="font-medium">{firestoreErrorNotice} (O sistema mantém o funcionamento contínuo via cache local sincronizado).</span>
+            <span className="font-medium">{firestoreErrorNotice} Os dados podem estar indisponíveis até a reconexão.</span>
           </div>
           <div className="flex items-center gap-2">
             <button 

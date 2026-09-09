@@ -281,13 +281,17 @@ export const firestoreService = {
   subscribeTimeRecords(
     onSuccess: (records: TimeRecord[]) => void,
     onError?: (error: Error) => void,
-    canteiroId?: string
+    canteiroId?: string,
+    matricula?: string
   ): Unsubscribe {
     const path = COLLECTIONS.LANCAMENTOS;
     try {
       const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
       let q;
-      if (normalizedCanteiro) {
+      const normalizedMatricula = matricula?.trim().toUpperCase();
+      if (normalizedMatricula) {
+        q = query(collection(db, path), where('matricula', '==', normalizedMatricula), limit(2000));
+      } else if (normalizedCanteiro) {
         q = query(collection(db, path), where('employeeSede', '==', normalizedCanteiro), limit(2000));
       } else {
         // Carrega registros sem restrição artificial de mês único para permitir visualização de meses anteriores (ex: Agosto)
@@ -463,17 +467,7 @@ export const firestoreService = {
       return list;
     } catch (error: any) {
       logFirestoreError(error, OperationType.LIST, path);
-      const local = storageService.getTimeRecords();
-      return local.filter(r => {
-        const d = r.dataRegistro || r.data_ocorrencia || '';
-        const matchDate = d >= startDate && d <= endDate;
-        if (!matchDate) return false;
-        if (normalizedCanteiro) {
-          const recSede = (r.employeeSede || '').toUpperCase();
-          return recSede.includes(normalizedCanteiro);
-        }
-        return true;
-      });
+      throw error;
     }
   },
 
@@ -936,6 +930,7 @@ export const firestoreService = {
     onError?: (error: Error) => void,
     optionsOrCanteiro?: string | {
       canteiroId?: string;
+      matricula?: string;
       startDate?: string;
       endDate?: string;
     }
@@ -945,20 +940,25 @@ export const firestoreService = {
       let canteiroId: string | undefined;
       let startDate: string | undefined;
       let endDate: string | undefined;
+      let matricula: string | undefined;
 
       if (typeof optionsOrCanteiro === 'string') {
         canteiroId = optionsOrCanteiro;
       } else if (optionsOrCanteiro) {
         canteiroId = optionsOrCanteiro.canteiroId;
+        matricula = optionsOrCanteiro.matricula;
         startDate = optionsOrCanteiro.startDate;
         endDate = optionsOrCanteiro.endDate;
       }
 
       const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
+      const normalizedMatricula = matricula?.trim().toUpperCase();
 
       let q;
       if (startDate && endDate) {
-        if (normalizedCanteiro) {
+        if (normalizedMatricula) {
+          q = query(collection(db, path), where('matricula', '==', normalizedMatricula), limit(2000));
+        } else if (normalizedCanteiro) {
           q = query(
             collection(db, path),
             where('sede', '==', normalizedCanteiro),
@@ -1459,13 +1459,17 @@ export const firestoreService = {
   subscribePaystubs(
     onSuccess: (paystubs: PaystubRecord[]) => void,
     onError?: (error: Error) => void,
-    canteiroId?: string
+    canteiroId?: string,
+    matricula?: string
   ): Unsubscribe {
     const path = COLLECTIONS.CONTRACHEQUES;
     try {
       const normalizedCanteiro = (canteiroId && canteiroId !== 'TODAS' && canteiroId !== 'TODOS') ? canteiroId.toUpperCase() : null;
+      const normalizedMatricula = matricula?.trim().toUpperCase();
       let q;
-      if (normalizedCanteiro) {
+      if (normalizedMatricula) {
+        q = query(collection(db, path), where('matricula', '==', normalizedMatricula), limit(500));
+      } else if (normalizedCanteiro) {
         q = query(collection(db, path), where('sede', '==', normalizedCanteiro), limit(500));
       } else {
         // Carrega os contracheques de todas as competências para visualização unificada na gestão e portal
@@ -1732,16 +1736,7 @@ export const firestoreService = {
       return list;
     } catch (error: any) {
       logFirestoreError(error, OperationType.LIST, path);
-      const local = storageService.getDispensasSptf();
-      return local.filter(d => {
-        const dateMatch = d.data && d.data >= startDate && d.data <= endDate;
-        if (!dateMatch) return false;
-        if (normalizedCanteiro) {
-          const secao = (d.secaoCanteiro || '').toUpperCase();
-          return secao.includes(normalizedCanteiro);
-        }
-        return true;
-      });
+      throw error;
     }
   },
 

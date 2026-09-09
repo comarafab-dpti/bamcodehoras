@@ -275,21 +275,11 @@ export const QuickBatchEntryModal: React.FC<QuickBatchEntryModalProps> = ({
       return true;
     } catch (err: any) {
       console.error('Erro ao gravar lote de lançamentos:', err);
-      // Fallback para cache local garantido
-      try {
-        storageService.addTimeRecordsBatch(recordsToSave);
-        safeInvoke(onSaveBatch, recordsToSave);
-        safeInvoke(onSave, recordsToSave);
-        safeInvoke(refreshData);
-        return true;
-      } catch (localErr) {
-        console.error('Falha no fallback local:', localErr);
-        setFeedback({
-          type: 'error',
-          text: `Erro ao gravar lote: ${err?.message || 'Falha na comunicação com o banco'}.`,
-        });
-        return false;
-      }
+      setFeedback({
+        type: 'error',
+        text: `Lote não gravado no Cloud Firestore: ${err?.message || 'Falha na comunicação com o banco'}.`,
+      });
+      return false;
     } finally {
       setIsSubmitting(false);
     }

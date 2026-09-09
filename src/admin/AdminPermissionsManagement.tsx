@@ -184,7 +184,7 @@ export const AdminPermissionsManagement: React.FC<AdminPermissionsManagementProp
       setAdmins(fullList);
       if (onAdminListChange) onAdminListChange(fullList);
     }, () => {
-      setAdmins(storageService.getAdmins());
+      setAdmins([]);
     });
 
     return () => unsub();
