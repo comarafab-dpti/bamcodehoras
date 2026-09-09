@@ -331,6 +331,11 @@ export default function App() {
   //    reabrir — nunca existem duas subscriptions competindo entre si.
   // -------------------------------------------------------------
   const initFirestoreSubscriptions = useCallback((hasSession: boolean) => {
+    if (!hasSession) {
+      setIsSyncing(false);
+      return () => {};
+    }
+
     setIsSyncing(true);
     setCollectionLoading((current) => ({
       ...current,
@@ -338,10 +343,10 @@ export default function App() {
       lancamentos: true,
       insalubridade: true,
       contracheques: true,
-      dispensas: hasSession,
-      admins: hasSession && isGlobalUser,
-      canteiros: hasSession,
-      configuracao: hasSession,
+      dispensas: true,
+      admins: isGlobalUser,
+      canteiros: true,
+      configuracao: true,
     }));
     testFirestoreConnection();
 

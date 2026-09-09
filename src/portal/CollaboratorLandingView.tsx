@@ -8,6 +8,7 @@ import { ContrachequeMirrorView } from './ContrachequeMirrorView';
 import { SessionTimeoutModal } from '@/src/shared/components/SessionTimeoutModal';
 import { LgpdConsentBanner } from './LgpdConsentBanner';
 import { PWAInstallButton } from '@/src/shared/components/PWAInstallButton';
+import { ModuleBadge } from '@/src/shared/components/ModuleBadge';
 import { useIdleTimer } from '@/src/shared/hooks/useIdleTimer';
 import { 
   ShieldCheck, 
@@ -294,24 +295,22 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
     <div className={`min-h-screen ${isDark ? 'bg-[#0B1426] text-[#E2E8F0]' : 'bg-[#F1F5F9] text-slate-900'} flex flex-col font-sans transition-colors`}>
       
       {/* ------------------------------------------------------------- */}
-      {/* CABEÇALHO COMPACTO COM BOTÃO DISCRETO DE ACESSO GESTÃO RH    */}
+      {/* CABEÇALHO COMPACTO E MOBILE-FIRST: CONSULTA DO COLABORADOR    */}
       {/* ------------------------------------------------------------- */}
-      <header className={`hidden sm:flex py-2.5 sm:py-3.5 px-4 sm:px-8 border-b items-center justify-between transition-all ${
+      <header className={`flex py-2.5 sm:py-3.5 px-3 sm:px-6 lg:px-8 border-b items-center justify-between transition-all select-none ${
         isDark ? 'bg-[#11203A] border-[#233654]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
-        <div className="flex items-center space-x-2.5 sm:space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3">
           <ComaraLogo size="sm" />
           <div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="font-black text-xs sm:text-base tracking-tight">COMARA</span>
-              <span className={`text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full font-bold uppercase ${
-                isDark ? 'bg-blue-950/60 text-blue-400 border border-blue-800/50' : 'bg-blue-50 text-blue-700 border border-blue-200'
-              }`}>
-                Autoatendimento SPTF
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className={`font-black text-xs sm:text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                COMARA
               </span>
+              <ModuleBadge tipo="portal" size="sm" />
             </div>
-            <p className={`text-[10px] sm:text-[11px] font-medium hidden sm:block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-              Portal do Colaborador • Consulta Segura de Banco de Horas
+            <p className={`text-[10px] sm:text-[11px] font-medium hidden xs:block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+              Autoatendimento • Consulta Segura de Banco de Horas
             </p>
           </div>
         </div>
@@ -340,12 +339,12 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
             onClick={onOpenAdminLogin}
             className={`flex items-center gap-1.5 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer ${
               isDark 
-                ? 'text-gray-400 hover:text-blue-300 hover:bg-blue-950/40 border border-transparent hover:border-blue-900/40' 
-                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/60 border border-transparent hover:border-blue-200'
+                ? 'text-gray-300 hover:text-white hover:bg-blue-950/50 border border-transparent hover:border-blue-800/60' 
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 border border-transparent hover:border-blue-200'
             }`}
             title="Acesso exclusivo para Gestores e RH"
           >
-            <Key className="w-3.5 h-3.5 text-blue-500/80" />
+            <Key className="w-3.5 h-3.5 text-blue-500" />
             <span className="hidden sm:inline">Acesso Gestão</span>
             <span className="sm:hidden text-[10px]">Gestor</span>
           </button>
@@ -372,15 +371,14 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
               <div className="flex justify-center">
                 <ComaraLogo size="xl" />
               </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>COMARA Comissão de Aeroportos da Região Amazônica</span>
+              <div className="flex justify-center">
+                <ModuleBadge tipo="portal" size="md" />
               </div>
-              <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">
-                Consulte seu Banco de Horas
+              <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Portal do Colaborador
               </h1>
               <p className={`text-xs sm:text-sm ${isDark ? 'text-[#94A3B8]' : 'text-slate-600'}`}>
-                Informe seu CPF ou matrícula e senha cadastrada para visualizar seu saldo e extrato individual.
+                Consulte com rapidez e segurança seu saldo de horas, insalubridade e contracheques SPTF.
               </p>
             </div>
 
@@ -513,6 +511,19 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
 
             </div>
 
+            {/* Acesso ao Módulo Administrativo para Gestores */}
+            <div className="text-center pt-0.5">
+              <a
+                href="/admin"
+                className={`inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-4 transition-colors ${
+                  isDark ? 'text-slate-400 hover:text-blue-300' : 'text-slate-600 hover:text-blue-600'
+                }`}
+              >
+                <Key className="w-3.5 h-3.5 text-blue-500" />
+                <span>É gestor, encarregado ou fiscal de obra? <strong>Acessar Módulo Administrativo &rarr;</strong></span>
+              </a>
+            </div>
+
             {/* No Mobile: Botão/Ícone Compacto com Instruções LGPD & Regras SPTF */}
             <div className="flex sm:hidden justify-center pt-1">
               <button
@@ -600,47 +611,55 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                 </div>
               </div>
 
-              {/* Abas do autoatendimento: Banco de Horas, Insalubridade e Contracheque */}
-              <div className="flex flex-wrap items-center gap-2 border-b border-slate-700/60 pb-3 print:hidden">
+              {/* Abas do autoatendimento: Meu Banco de Horas, Minha Insalubridade e Meus Contracheques */}
+              <div className={`flex flex-wrap items-center gap-2 border-b pb-3 print:hidden ${
+                isDark ? 'border-[#243756]' : 'border-slate-200'
+              }`}>
                 <button
                   type="button"
                   onClick={() => setCollaboratorTab('BANCO')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                     collaboratorTab === 'BANCO'
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                      : isDark ? 'bg-[#16243D] hover:bg-[#233654] text-gray-300' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                      : isDark 
+                        ? 'bg-[#16243D] hover:bg-[#233654] text-slate-300 border border-[#2A4063]' 
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs'
                   }`}
                 >
                   <Clock className="w-4 h-4" />
-                  <span>Banco de Horas</span>
+                  <span>Meu Banco de Horas</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setCollaboratorTab('INSALUBRIDADE')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                     collaboratorTab === 'INSALUBRIDADE'
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                      : isDark ? 'bg-[#16243D] hover:bg-[#233654] text-gray-300' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
+                      : isDark 
+                        ? 'bg-[#16243D] hover:bg-[#233654] text-slate-300 border border-[#2A4063]' 
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs'
                   }`}
                 >
-                  <Biohazard className="w-4 h-4 text-amber-300" />
-                  <span>Insalubridade</span>
+                  <Biohazard className="w-4 h-4 text-amber-400" />
+                  <span>Minha Insalubridade</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setCollaboratorTab('CONTRACHEQUE')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                     collaboratorTab === 'CONTRACHEQUE'
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
-                      : isDark ? 'bg-[#16243D] hover:bg-[#233654] text-gray-300' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/25'
+                      : isDark 
+                        ? 'bg-[#16243D] hover:bg-[#233654] text-slate-300 border border-[#2A4063]' 
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-xs'
                   }`}
                 >
                   <Receipt className="w-4 h-4 text-emerald-400" />
-                  <span>Contracheque</span>
+                  <span>Meus Contracheques</span>
                   {myPaystubs.length > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">
+                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
                       {myPaystubs.length}
                     </span>
                   )}
@@ -774,44 +793,68 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
                     </div>
                   </div>
 
-                  {/* Feedback de Saldo em Grande Destaque */}
-                  <div className={`p-5 sm:p-6 rounded-2xl border flex flex-col items-center md:items-end justify-center min-w-[220px] ${
+                  {/* Feedback de Saldo em Grande Destaque (Vívido e Alto Contraste) */}
+                  <div className={`p-5 sm:p-6 rounded-2xl border flex flex-col items-center md:items-end justify-center min-w-[240px] shadow-sm ${
                     employeeData.statusSaldo === 'POSITIVO'
-                      ? 'bg-emerald-950/50 border-emerald-500/60 text-emerald-400'
+                      ? isDark 
+                        ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-emerald-950/40' 
+                        : 'bg-emerald-50/90 border-emerald-300 text-emerald-900 shadow-emerald-100'
                       : employeeData.statusSaldo === 'NEGATIVO'
-                      ? 'bg-red-950/50 border-red-500/60 text-red-400'
-                      : 'bg-blue-950/50 border-blue-500/50 text-blue-300'
+                      ? isDark 
+                        ? 'bg-red-950/60 border-red-500/60 text-red-300 shadow-red-950/40' 
+                        : 'bg-red-50/90 border-red-300 text-red-900 shadow-red-100'
+                      : isDark 
+                        ? 'bg-blue-950/60 border-blue-500/50 text-blue-300 shadow-blue-950/30' 
+                        : 'bg-blue-50/90 border-blue-300 text-blue-900 shadow-blue-100'
                   }`}>
-                    <span className="text-[11px] uppercase font-bold tracking-wider opacity-90">
+                    <span className={`text-[11px] uppercase font-black tracking-wider ${
+                      employeeData.statusSaldo === 'POSITIVO'
+                        ? isDark ? 'text-emerald-400' : 'text-emerald-800'
+                        : employeeData.statusSaldo === 'NEGATIVO'
+                        ? isDark ? 'text-red-400' : 'text-red-800'
+                        : isDark ? 'text-blue-400' : 'text-blue-800'
+                    }`}>
                       Saldo Total Consolidado
                     </span>
                     
-                    <div className="flex items-baseline gap-1 my-1">
+                    <div className="flex items-baseline gap-1 my-1.5">
                       {employeeData.statusSaldo === 'POSITIVO' ? (
-                        <TrendingUp className="w-7 h-7 mr-1" />
+                        <TrendingUp className={`w-8 h-8 mr-1 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       ) : employeeData.statusSaldo === 'NEGATIVO' ? (
-                        <TrendingDown className="w-7 h-7 mr-1" />
+                        <TrendingDown className={`w-8 h-8 mr-1 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
                       ) : (
-                        <Clock className="w-7 h-7 mr-1" />
+                        <Clock className={`w-8 h-8 mr-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
                       )}
-                      <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight">
+                      <span className={`text-4xl sm:text-5xl font-black font-mono tracking-tight ${
+                        employeeData.statusSaldo === 'POSITIVO'
+                          ? isDark ? 'text-emerald-300' : 'text-emerald-700'
+                          : employeeData.statusSaldo === 'NEGATIVO'
+                          ? isDark ? 'text-red-300' : 'text-red-700'
+                          : isDark ? 'text-blue-300' : 'text-blue-700'
+                      }`}>
                         {employeeData.saldoTotalHoras > 0 ? `+${employeeData.saldoTotalHoras.toFixed(1)}` : employeeData.saldoTotalHoras.toFixed(1)}h
                       </span>
                     </div>
 
-                    <div className="text-xs font-bold opacity-90">
+                    <div className={`text-xs font-bold ${
+                      employeeData.statusSaldo === 'POSITIVO'
+                        ? isDark ? 'text-emerald-200/90' : 'text-emerald-800'
+                        : employeeData.statusSaldo === 'NEGATIVO'
+                        ? isDark ? 'text-red-200/90' : 'text-red-800'
+                        : isDark ? 'text-blue-200/90' : 'text-blue-800'
+                    }`}>
                       Equivalente a <strong>{employeeData.saldoTotalDias} dias</strong> (Base 8h)
                     </div>
 
-                    <span className={`mt-2.5 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-wide ${
+                    <span className={`mt-3 text-[11px] px-3 py-1 rounded-full font-black uppercase tracking-wide ${
                       employeeData.statusSaldo === 'POSITIVO'
-                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                         : employeeData.statusSaldo === 'NEGATIVO'
-                        ? 'bg-red-500 text-white shadow-md shadow-red-500/30 animate-pulse'
-                        : 'bg-blue-500 text-white shadow-md shadow-blue-500/30'
+                        ? 'bg-red-600 text-white shadow-md shadow-red-600/30 animate-pulse'
+                        : 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                     }`}>
                       {employeeData.statusSaldo === 'POSITIVO'
-                        ? '✔ Saldo Positivo (Crédito a Compensar)'
+                        ? '✔ Saldo Disponível (Crédito a Compensar)'
                         : employeeData.statusSaldo === 'NEGATIVO'
                         ? '⚠ Saldo Negativo (Débito a Liquidar)'
                         : '✔ Banco de Horas Regularizado'}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SystemConfig, AdminRole } from '@/src/shared/types';
 import { ComaraLogo } from '@/src/shared/components/ComaraLogo';
 import { PWAInstallButton } from '@/src/shared/components/PWAInstallButton';
+import { ModuleBadge } from '@/src/shared/components/ModuleBadge';
 import { rbacService, ROLE_INFO } from '@/src/shared/services/rbacService';
 import { 
   BarChart3, 
@@ -119,8 +120,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className={`${
-      isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-white border-slate-200 text-slate-800'
-    } border-b sticky top-0 z-40 shadow-xs transition-colors`}>
+      isDark ? 'bg-[#0F1B33] border-[#243756] text-[#E2E8F0]' : 'bg-[#0B1426] border-[#1D2C47] text-[#E2E8F0]'
+    } border-b sticky top-0 z-40 shadow-md transition-colors`}>
+      {/* 0. TOPO INSTITUCIONAL: BARRA DO MÓDULO ADMINISTRATIVO */}
+      <div className="bg-[#070D19] border-b border-[#1A263D] px-2 sm:px-4 lg:px-6 xl:px-8 py-1 text-[11px] flex items-center justify-between select-none">
+        <div className="flex items-center gap-2">
+          <ModuleBadge tipo="admin" size="sm" />
+          <span className="text-[10px] sm:text-[11px] font-bold text-amber-400 tracking-wider uppercase hidden xs:inline">
+            Gestão & Administração SPTF
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] sm:text-[11px] font-mono text-slate-400">
+          <span className="hidden sm:inline text-slate-400">
+            Painel Operacional RH & Fiscalização
+          </span>
+          <a
+            href="/portal"
+            className="text-[10px] font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors flex items-center gap-1"
+            title="Ir para o Portal do Colaborador"
+          >
+            <span>Acessar Portal</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+
       <div className="max-w-[1880px] mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
         <div className="flex items-center justify-between h-16 gap-1.5 sm:gap-3">
           
@@ -134,19 +158,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <ComaraLogo logoUrl={systemConfig?.logoUrl} size="sm" />
             <div>
-              <div className="flex items-center space-x-1.5">
-                <span className={`font-bold text-xs sm:text-sm xl:text-base tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <div className="flex items-center space-x-1.5 flex-wrap">
+                <span className={`font-bold text-xs sm:text-sm xl:text-base tracking-tight text-white`}>
                   COMARA <span className="text-[#3B82F6]">SPTF</span>
                 </span>
-                <span className={`text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1 sm:px-1.5 py-0.2 rounded border ${
-                  isDark 
-                    ? 'bg-[#243756] text-blue-400 border-[#335075]' 
-                    : 'bg-blue-50 text-blue-700 border-blue-200'
-                }`}>
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1 sm:px-1.5 py-0.2 rounded border bg-[#243756] text-blue-400 border-[#335075]">
                   RH Cloud
                 </span>
+                <ModuleBadge tipo="admin" size="sm" className="hidden xl:inline-flex" />
               </div>
-              <p className={`text-[10px] sm:text-[11px] font-mono font-medium hidden sm:block ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
+              <p className="text-[10px] sm:text-[11px] font-mono font-medium hidden sm:block text-[#94A3B8]">
                 Sedes: <span className="text-[#3B82F6] font-bold">KO</span> • BE • MN
               </p>
             </div>

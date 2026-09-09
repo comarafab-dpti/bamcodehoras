@@ -12,7 +12,11 @@ export default function PortalApp() {
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [insalubrityRecords, setInsalubrityRecords] = useState<InsalubrityRecord[]>([]);
   const [paystubs, setPaystubs] = useState<PaystubRecord[]>([]);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => storageService.getTheme());
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('portal_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return 'light';
+  });
   const [matricula, setMatricula] = useState<string>();
 
   useEffect(() => {
@@ -77,6 +81,7 @@ export default function PortalApp() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('portal_theme', theme);
     storageService.setTheme(theme);
   }, [theme]);
 
@@ -87,7 +92,7 @@ export default function PortalApp() {
       insalubrityRecords={insalubrityRecords}
       paystubs={paystubs}
       onOpenAdminLogin={() => {
-        window.location.assign('/admin.html');
+        window.location.assign('/admin');
       }}
       theme={theme}
       onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}

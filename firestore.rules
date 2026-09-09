@@ -73,6 +73,14 @@ service cloud.firestore {
     // 3. NORMALIZAÇÃO DE PERFIS
     // ============================================================
 
+    function isMasterEmail() {
+      return isAuthenticated()
+        && (
+          userEmail() == 'comarafab@gmail.com'
+          || userEmail() == 'coari.comara@gmail.com'
+        );
+    }
+
     function normalizeRole() {
       let r = rawRole();
 
@@ -89,8 +97,10 @@ service cloud.firestore {
     // ============================================================
 
     function isSuperAdmin() {
-      return isAdminActive()
-        && normalizeRole() == 'SUPER_ADMIN';
+      // O perfil vem ESTRITAMENTE do documento em admin_users.
+      // E-mail master só é aceito durante o primeiro acesso/bootstrap se o documento ainda não existir.
+      return (isAdminActive() && normalizeRole() == 'SUPER_ADMIN')
+        || (!hasAdminDoc() && isMasterEmail());
     }
 
     function isRH() {
@@ -157,18 +167,16 @@ service cloud.firestore {
      */
     function documentoDoMeuCanteiro(data) {
       let meu = meuCanteiro();
-
-      if (meu == '') {
-        return false;
-      }
-
       let sedeCodigo = data.get('sedeCodigo', '');
       let employeeSede = data.get('employeeSede', '');
       let sede = data.get('sede', '');
 
-      return (sedeCodigo != '' && sedeCodigo == meu)
-        || (employeeSede != '' && employeeSede == meu)
-        || (sede != '' && sede == meu);
+      return meu != ''
+        && (
+          (sedeCodigo != '' && sedeCodigo == meu)
+          || (employeeSede != '' && employeeSede == meu)
+          || (sede != '' && sede == meu)
+        );
     }
 
     /*
@@ -176,17 +184,11 @@ service cloud.firestore {
      * employeeSede (padrão), sedeCodigo ou sede (canônico/legado).
      */
     function canteiroDoDocumento(data) {
-      let sede = data.get('employeeSede', '');
+      let employeeSede = data.get('employeeSede', '');
+      let sedeCodigo = data.get('sedeCodigo', '');
+      let sede = data.get('sede', '');
 
-      if (sede == '') {
-        sede = data.get('sedeCodigo', '');
-      }
-
-      if (sede == '') {
-        sede = data.get('sede', '');
-      }
-
-      return sede;
+      return employeeSede != '' ? employeeSede : (sedeCodigo != '' ? sedeCodigo : sede);
     }
 
     function canteiroPermitido(canteiro) {
@@ -205,19 +207,15 @@ service cloud.firestore {
      * o código do próprio canteiro.
      */
     function contrachequeCanteiroPermitido(data) {
-      if (isGlobalAdmin()) {
-        return true;
-      }
-
       let meu = meuCanteiro().lower();
-
-      if (meu == '') {
-        return false;
-      }
-
       let sede = string(data.get('sede', '')).lower();
 
-      return sede != '' && sede.matches('.*' + meu + '.*');
+      return isGlobalAdmin()
+        || (
+          meu != ''
+          && sede != ''
+          && sede.matches('.*' + meu + '.*')
+        );
     }
 
     // ============================================================
@@ -351,20 +349,9 @@ service cloud.firestore {
       let ref =
         /databases/$(database)/documents/competencias_controle/$(anterior);
 
-      // Sem documento de controle do mês anterior = liberado
-      if (!exists(ref)) {
-        return true;
-      }
-
-      let controle = get(ref).data.get('statusCanteiros', {});
-      let registro = controle.get(canteiro, null);
-
-      // Canteiro sem registro no mapa = liberado
-      if (registro == null) {
-        return true;
-      }
-
-      return registro.get('status', 'ABERTO') == 'FECHADO';
+      return !exists(ref)
+        || get(ref).data.get('statusCanteiros', {}).get(canteiro, null) == null
+        || get(ref).data.get('statusCanteiros', {}).get(canteiro, {}).get('status', 'ABERTO') == 'FECHADO';
     }
 
     function lancamentoCompetenciaPermitido(data) {
@@ -396,19 +383,19 @@ service cloud.firestore {
     match /lancamentos/{doc} {
 
       /*
-       * Leitura pública: o Portal do Colaborador (/portal) consulta
-       * lançamentos sem Firebase Auth; a senha é validada no app e a
-       * tela exibe apenas os dados do colaborador autenticado.
-       * Escrita permanece restrita por perfil e por competência.
+       * Leitura restrita: Administradores globais consultam tudo;
+       * Perfis de canteiro consultam lançamentos do próprio canteiro;
+       * Colaboradores autenticados via Custom Token consultam apenas
+       * seus próprios registros (request.auth.token.matricula).
        */
       allow read: if
         isGlobalAdmin()
-        || (isColaborador() && pertenceAoColaborador(resource.data))
         || (
           isAdminActive()
           && (isGerenteCanteiro() || isDA())
           && documentoDoMeuCanteiro(resource.data)
-        );
+        )
+        || (isColaborador() && pertenceAoColaborador(resource.data));
 
       // Criar lançamento
       allow create: if
@@ -480,18 +467,19 @@ service cloud.firestore {
     match /contracheques/{doc} {
 
       /*
-       * Leitura pública: o Portal do Colaborador exibe o
-       * contracheque após validação de senha no app.
-       * Perfis restritos filtram pelo próprio canteiro.
+       * Leitura restrita: Administradores globais consultam tudo;
+       * Perfis de canteiro consultam contracheques do próprio canteiro;
+       * Colaboradores autenticados via Custom Token consultam apenas
+       * seus próprios contracheques (request.auth.token.matricula).
        */
       allow read: if
         isGlobalAdmin()
-        || (isColaborador() && pertenceAoColaborador(resource.data))
         || (
           isAdminActive()
           && (isGerenteCanteiro() || isDA())
           && contrachequeCanteiroPermitido(resource.data)
-        );
+        )
+        || (isColaborador() && pertenceAoColaborador(resource.data));
 
       /*
        * Importação de folha NÃO exige competência aberta/fechada:
@@ -521,17 +509,19 @@ service cloud.firestore {
     match /insalubridade_records/{doc} {
 
       /*
-       * Leitura pública: o Portal do Colaborador consulta os
-       * apontamentos após validação de senha no app.
+       * Leitura restrita: Administradores globais consultam tudo;
+       * Perfis de canteiro consultam apontamentos do próprio canteiro;
+       * Colaboradores autenticados via Custom Token consultam apenas
+       * seus próprios registros (request.auth.token.matricula).
        */
       allow read: if
         isGlobalAdmin()
-        || (isColaborador() && pertenceAoColaborador(resource.data))
         || (
           isAdminActive()
           && (isGerenteCanteiro() || isDA())
           && documentoDoMeuCanteiro(resource.data)
-        );
+        )
+        || (isColaborador() && pertenceAoColaborador(resource.data));
 
       allow create: if
         podeLancar()
@@ -698,7 +688,7 @@ service cloud.firestore {
 
     match /system_config/{doc} {
 
-      allow read: if isAuthenticated();
+      allow read: if true;
 
       allow create, update, delete: if
         isGlobalAdmin();
@@ -706,7 +696,7 @@ service cloud.firestore {
 
     match /institution_settings/{doc} {
 
-      allow read: if isAuthenticated();
+      allow read: if true;
 
       allow create, update, delete: if
         isGlobalAdmin();
@@ -716,16 +706,21 @@ service cloud.firestore {
     // 19. COLABORADORES
     // ============================================================
 
-    /*
-    * MODELO DE PORTAL COM CUSTOM TOKEN:
-     *
-    * A Cloud Function valida a senha e emite a claim matricula. O
-    * documento retornado precisa pertencer à matrícula autenticada.
-     */
     match /colaboradores/{doc} {
 
+      /*
+       * Leitura restrita: Administradores globais consultam tudo;
+       * Perfis de canteiro consultam colaboradores do próprio canteiro;
+       * Colaboradores autenticados via Custom Token consultam apenas
+       * o próprio cadastro (request.auth.token.matricula).
+       */
       allow read: if
         isGlobalAdmin()
+        || (
+          isAdminActive()
+          && (isGerenteCanteiro() || isDA())
+          && documentoDoMeuCanteiro(resource.data)
+        )
         || (isColaborador() && pertenceAoColaborador(resource.data));
 
       // Somente perfis globais (RH/TI) escrevem cadastros.
@@ -737,11 +732,6 @@ service cloud.firestore {
     // 20. CREDENCIAIS DOS COLABORADORES
     // ============================================================
 
-    /*
-    * A leitura de colaboradores_auth é exclusiva da administração.
-    * A Cloud Function é a única camada que deve acessar o hash da
-    * senha para emitir o Firebase Custom Token.
-     */
     match /colaboradores_auth/{doc} {
 
       allow read: if isGlobalAdmin();
@@ -792,11 +782,28 @@ service cloud.firestore {
         (
           isAuthenticated()
           && userId.lower() == userEmail()
+        )
+
+        ||
+
+        // Bootstrap inicial de conta master antes de possuir documento cadastrado
+        (
+          isMasterEmail()
+          && !hasAdminDoc()
+          && userId.lower() == userEmail()
         );
 
-      // SUPER_ADMIN cria usuários.
+      // SUPER_ADMIN cria usuários (ou bootstrap da conta master inicial se não existir documento).
       allow create: if
         isSuperAdmin()
+
+        ||
+
+        (
+          isMasterEmail()
+          && !hasAdminDoc()
+          && userId.lower() == userEmail()
+        )
 
         ||
 
@@ -1081,7 +1088,15 @@ service cloud.firestore {
     }
 
     // ============================================================
-    // 26. NEGAR TUDO QUE NÃO FOI DEFINIDO
+    // 26. HEALTHCHECK / TEST
+    // ============================================================
+
+    match /test/{doc} {
+      allow read: if true;
+    }
+
+    // ============================================================
+    // 27. NEGAR TUDO QUE NÃO FOI DEFINIDO
     // ============================================================
 
     match /{document=**} {

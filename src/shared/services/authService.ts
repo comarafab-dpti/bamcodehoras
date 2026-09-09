@@ -300,22 +300,24 @@ export async function processAuthenticatedUser(firebaseUser: FirebaseUser): Prom
     console.warn('[Auth] Erro ao consultar documento em admin_users:', err);
   }
 
-  // Se não existir, auto-cadastra sempre como pendente. O e-mail não concede perfil.
+  // Se não existir, auto-cadastra. E-mail master cria o primeiro cadastro ativo como SUPER_ADMIN (bootstrap).
+  // Após criado, o perfil será lido EXCLUSIVAMENTE do documento do Firestore.
   if (!adminDoc) {
+    const isMasterBootstrap = isMasterAdminEmail(email);
     const newDoc: AdminUser = {
       id: email,
       email,
-      nome: firebaseUser.displayName || email.split('@')[0] || 'Sem nome',
-      cargo: 'Aguardando aprovação',
-      funcao: '',
-      role: 'NENHUM' as AdminRole,
-      nivelAcesso: 'NENHUM' as AdminRole,
-      status: 'pendente',
-      perfil: 'nenhum',
+      nome: firebaseUser.displayName || (isMasterBootstrap ? 'Super Administrador COMARA' : (email.split('@')[0] || 'Sem nome')),
+      cargo: isMasterBootstrap ? 'Super Administrador TI / RH' : 'Aguardando aprovação',
+      funcao: isMasterBootstrap ? 'Super Administrador TI / RH' : '',
+      role: (isMasterBootstrap ? 'SUPER_ADMIN' : 'NENHUM') as AdminRole,
+      nivelAcesso: (isMasterBootstrap ? 'SUPER_ADMIN' : 'NENHUM') as AdminRole,
+      status: isMasterBootstrap ? 'ativo' : 'pendente',
+      perfil: isMasterBootstrap ? 'super_admin' : 'nenhum',
       foto: firebaseUser.photoURL || null,
       sede: 'TODAS',
       canteiroSede: 'TODAS',
-      ativo: false,
+      ativo: isMasterBootstrap,
       criadoEm: nowIso,
       atualizadoEm: nowIso,
     };
