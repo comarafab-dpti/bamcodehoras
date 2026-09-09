@@ -4,6 +4,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInAnonymously,
+  signInWithCustomToken,
   User as FirebaseUser 
 } from 'firebase/auth';
 import { auth, googleProvider, db, handleFirestoreError, OperationType } from './firebase';
@@ -103,6 +104,32 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPasswordHash(password: string, passwordHash: string): Promise<boolean> {
   return (await hashPassword(password)) === passwordHash;
+}
+
+export function isEmployeeAuthFunctionConfigured(): boolean {
+  return Boolean(((import.meta as any).env?.VITE_EMPLOYEE_AUTH_FUNCTION_URL || '').trim());
+}
+
+export async function authenticateEmployeeWithCustomToken(matricula: string, password: string): Promise<Employee | null> {
+  const endpoint = ((import.meta as any).env?.VITE_EMPLOYEE_AUTH_FUNCTION_URL || '').trim();
+  if (!endpoint) return null;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ matricula, password }),
+  });
+  if (!response.ok) {
+    throw new Error(`Falha na autenticação do colaborador (${response.status}).`);
+  }
+
+  const payload = await response.json() as { token?: string };
+  if (!payload.token) throw new Error('A função de autenticação não retornou um Custom Token.');
+  await signInWithCustomToken(auth, payload.token);
+  const employeeSnapshot = await getDoc(doc(db, COLLECTIONS.COLABORADORES, matricula));
+  return employeeSnapshot.exists()
+    ? mapEmployeeSnapshot({ id: employeeSnapshot.id, data: () => employeeSnapshot.data() })
+    : null;
 }
 
 function normalizeEmployeeIdentifier(value: string): { raw: string; digits: string } {
@@ -261,8 +288,6 @@ export async function processAuthenticatedUser(firebaseUser: FirebaseUser): Prom
   }
 
   const nowIso = new Date().toISOString();
-  const isMaster = isMasterAdminEmail(email);
-
   let adminDoc: AdminUser | null = null;
   const docRef = doc(db, COLLECTIONS.ADMIN_USERS, email);
 
@@ -275,22 +300,22 @@ export async function processAuthenticatedUser(firebaseUser: FirebaseUser): Prom
     console.warn('[Auth] Erro ao consultar documento em admin_users:', err);
   }
 
-  // Se não existir, auto-cadastra com status 'pendente' e role 'NENHUM'
+  // Se não existir, auto-cadastra sempre como pendente. O e-mail não concede perfil.
   if (!adminDoc) {
     const newDoc: AdminUser = {
       id: email,
       email,
       nome: firebaseUser.displayName || email.split('@')[0] || 'Sem nome',
-      cargo: isMaster ? 'Super Administrador TI / RH' : 'Aguardando aprovação',
-      funcao: isMaster ? 'Super Administrador TI / RH' : '',
-      role: (isMaster ? 'SUPER_ADMIN' : 'NENHUM') as AdminRole,
-      nivelAcesso: (isMaster ? 'SUPER_ADMIN' : 'NENHUM') as AdminRole,
-      status: isMaster ? 'ativo' : 'pendente',
-      perfil: isMaster ? 'SUPER_ADMIN' : 'nenhum',
+      cargo: 'Aguardando aprovação',
+      funcao: '',
+      role: 'NENHUM' as AdminRole,
+      nivelAcesso: 'NENHUM' as AdminRole,
+      status: 'pendente',
+      perfil: 'nenhum',
       foto: firebaseUser.photoURL || null,
       sede: 'TODAS',
       canteiroSede: 'TODAS',
-      ativo: isMaster ? true : false,
+      ativo: false,
       criadoEm: nowIso,
       atualizadoEm: nowIso,
     };
@@ -303,23 +328,10 @@ export async function processAuthenticatedUser(firebaseUser: FirebaseUser): Prom
       adminDoc = newDoc;
     }
   } else {
-    // Se o documento existe e é conta master, garante permissão de super admin
-    if (isMaster && (adminDoc.role !== 'SUPER_ADMIN' || adminDoc.status !== 'ativo' || !adminDoc.ativo)) {
-      adminDoc.role = 'SUPER_ADMIN';
-      adminDoc.nivelAcesso = 'SUPER_ADMIN';
-      adminDoc.status = 'ativo';
-      adminDoc.ativo = true;
-      adminDoc.atualizadoEm = nowIso;
-      try {
-        await setDoc(docRef, sanitize(adminDoc), { merge: true });
-      } catch (e) {
-        console.warn('Erro ao atualizar master admin:', e);
-      }
-    }
   }
 
   // Verificação de usuário desativado / bloqueado
-  if (!isMaster && (adminDoc.status === 'inativo' || adminDoc.status === 'bloqueado' || adminDoc.ativo === false)) {
+  if (adminDoc.status === 'inativo' || adminDoc.status === 'bloqueado' || adminDoc.ativo === false) {
     return {
       status: 'inativo',
       admin: adminDoc,
@@ -328,9 +340,9 @@ export async function processAuthenticatedUser(firebaseUser: FirebaseUser): Prom
     };
   }
 
-  const isAtivo = isMaster || (
+  const isAtivo = (
     adminDoc.status === 'ativo' && 
-    adminDoc.ativo !== false && 
+    adminDoc.ativo &&
     adminDoc.role !== 'NENHUM' && 
     adminDoc.perfil !== 'nenhum'
   );
@@ -338,7 +350,7 @@ export async function processAuthenticatedUser(firebaseUser: FirebaseUser): Prom
   return {
     status: isAtivo ? 'ativo' : 'pendente',
     admin: adminDoc,
-    isSuperAdmin: isMaster || adminDoc.role === 'SUPER_ADMIN',
+    isSuperAdmin: adminDoc.role === 'SUPER_ADMIN' || adminDoc.nivelAcesso === 'SUPER_ADMIN',
     message: isAtivo 
       ? `Bem-vindo(a), ${adminDoc.nome}!` 
       : 'Sua conta foi registrada e aguarda liberação do administrador.'
@@ -436,6 +448,30 @@ export const authService = {
     employee: Employee
   ): Promise<{ success: boolean; message: string; requiresFirstAccessSetup?: boolean }> {
     const cleanMatricula = matricula.trim().toUpperCase();
+
+    // Em produção, a Function é a autoridade da senha e entrega a claim matricula.
+    // O modo legado só permanece disponível explicitamente em localhost sem endpoint.
+    const authEndpointConfigured = isEmployeeAuthFunctionConfigured();
+    if (authEndpointConfigured) {
+      try {
+        const employeeFromToken = await authenticateEmployeeWithCustomToken(cleanMatricula, passwordAttempt);
+        if (!employeeFromToken) {
+          return { success: false, message: 'Cadastro de colaborador não localizado.' };
+        }
+        await this.logAccess(cleanMatricula, employee.nome, 'LOGIN_COLABORADOR', true, 'Autenticação via Firebase Custom Token');
+        return { success: true, message: 'Autenticado com sucesso!' };
+      } catch (error) {
+        console.warn('Falha na autenticação via Cloud Function:', error);
+        return { success: false, message: 'Não foi possível validar o acesso agora. Tente novamente.' };
+      }
+    }
+
+    const allowLegacyAuth = Boolean((import.meta as any).env?.DEV) && typeof window !== 'undefined' &&
+      ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if (!allowLegacyAuth) {
+      return { success: false, message: 'A autenticação do portal ainda não está configurada neste domínio.' };
+    }
+
     const authData = await this.getEmployeeAuth(cleanMatricula);
 
     // Se o colaborador ainda não definiu senha

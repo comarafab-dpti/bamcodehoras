@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Employee, TimeRecord, Attachment, InsalubrityRecord, PaystubRecord } from '@/src/shared/types';
-import { authService, findEmployeeForPublicLogin } from '@/src/shared/services/authService';
+import { authService, findEmployeeForPublicLogin, authenticateEmployeeWithCustomToken, isEmployeeAuthFunctionConfigured } from '@/src/shared/services/authService';
 import { ComaraLogo } from '@/src/shared/components/ComaraLogo';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { InfoTooltip } from '@/src/shared/components/InfoTooltip';
@@ -115,7 +115,27 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
 
     setIsLoading(true);
 
-    const matchedEmployee = await findEmployeeForPublicLogin(rawInput, employees);
+    let matchedEmployee = isEmployeeAuthFunctionConfigured()
+      ? null
+      : await findEmployeeForPublicLogin(rawInput, employees);
+
+    if (isEmployeeAuthFunctionConfigured()) {
+      try {
+        matchedEmployee = await authenticateEmployeeWithCustomToken(rawInput, passwordInput);
+        if (matchedEmployee) {
+          setAuthenticatedEmployee(matchedEmployee);
+          setSuccessMessage(`Bem-vindo(a), ${matchedEmployee.nome}! Consulta autorizada.`);
+          setPasswordInput('');
+          setIsLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        setIsLoading(false);
+        setErrorMessage('Ocorreu um erro ao validar sua senha. Tente novamente.');
+        return;
+      }
+    }
 
     if (!matchedEmployee) {
       setIsLoading(false);

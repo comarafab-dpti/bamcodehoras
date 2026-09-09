@@ -1,33 +1,12 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
-import App from './App.tsx';
-import { ErrorBoundary } from './shared/components/ErrorBoundary';
-import { InstitutionProvider } from './shared/contexts/InstitutionContext';
 import './index.css';
 
-// Registro do Service Worker do PWA
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Registra service-worker.js na raiz
-    navigator.serviceWorker
-      .register('/service-worker.js', { scope: '/' })
-      .then((registration) => {
-        console.log('[PWA] Service Worker registrado com sucesso:', registration.scope);
-      })
-      .catch((error) => {
-        console.warn('[PWA] Falha ao registrar Service Worker:', error);
-      });
-  });
-}
+const hostname = window.location.hostname.toLowerCase();
+const isAdmin = window.location.pathname.startsWith('/admin') || hostname === 'admbancodehoras.ai.studio';
+const entry = isAdmin ? import('./admin/main') : import('./portal/main');
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary fallbackTitle="Sistema SPTF - Recuperação de Sessão">
-      <InstitutionProvider>
-        <App />
-      </InstitutionProvider>
-    </ErrorBoundary>
-  </StrictMode>,
-);
+entry.catch((error) => {
+  console.error('[COMARA] Falha ao carregar o entry point:', error);
+  document.getElementById('root')!.textContent = 'Não foi possível carregar esta interface. Tente novamente.';
+});
 
 

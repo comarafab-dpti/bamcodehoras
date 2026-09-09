@@ -488,11 +488,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </div>
                   
-                  {/* SEÇÃO 2: LANÇAMENTOS E OPERAÇÕES RÁPIDAS */}
+                  {/* SEÇÃO 1: REGISTRAR */}
                   <div className={`px-3.5 py-1.5 border-b text-[10px] uppercase font-bold tracking-wider flex items-center justify-between ${
                     isDark ? 'border-[#243756] text-blue-400 bg-blue-950/20' : 'border-slate-100 text-blue-600 bg-blue-50/50'
                   }`}>
-                    <span>Lançamentos & Operações</span>
+                    <span>Registrar</span>
                     <Plus className="w-3.5 h-3.5" />
                   </div>
 
@@ -613,11 +613,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   </div>
 
-                  {/* SEÇÃO 2: GESTÃO & SISTEMA */}
+                  {/* SEÇÃO 2: ACOMPANHAR */}
                   <div className={`mt-2 px-3.5 py-1.5 border-y text-[10px] uppercase font-bold tracking-wider ${
                     isDark ? 'border-[#243756] text-[#94A3B8] bg-[#0F1B33]' : 'border-slate-100 text-slate-500 bg-slate-50'
                   }`}>
-                    Gestão & Sistema
+                    Acompanhar
                   </div>
 
                   {/* 2.1 Canteiros de Obras */}
@@ -692,6 +692,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     </div>
                   </button>
+
+                  {/* SEÇÃO 3: CONFIGURAÇÕES */}
+                  <div className={`mt-2 px-3.5 py-1.5 border-y text-[10px] uppercase font-bold tracking-wider ${
+                    isDark ? 'border-[#243756] text-[#94A3B8] bg-[#0F1B33]' : 'border-slate-100 text-slate-500 bg-slate-50'
+                  }`}>
+                    Configurações
+                  </div>
 
                   {/* 2.3 Configurações da Instituição - SUPER_ADMIN */}
                   {canManageSystem && (

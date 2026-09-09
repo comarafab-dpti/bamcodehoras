@@ -235,13 +235,8 @@ const PortariaAttendanceSheetModalContent: React.FC<PortariaAttendanceSheetModal
     }
   }, [defaultSede]);
 
-  // Lista unificada de dispensas (prop ou localStorage)
-  const allDispensas = useMemo(() => {
-    if (dispensas && dispensas.length > 0) {
-      return dispensas;
-    }
-    return storageService.getDispensasSptf();
-  }, [dispensas]);
+  // A lista oficial vem exclusivamente do listener recebido por props.
+  const allDispensas = useMemo(() => dispensas || [], [dispensas]);
 
   /**
    * Checagem Completa e Unificada de Status do Colaborador na Data Selecionada
