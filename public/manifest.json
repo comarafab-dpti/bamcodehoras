@@ -1,9 +1,9 @@
 {
   "id": "/",
-  "name": "COMARA - Sistema de Gestão de Pessoal",
-  "short_name": "COMARA",
-  "description": "Sistema oficial de gestão de Banco de Horas SPTF e Pessoal da COMARA com conformidade LGPD e Cloud Firestore.",
-  "start_url": "/",
+  "name": "COMARA - Consulta do Colaborador",
+  "short_name": "COMARA Portal",
+  "description": "Portal do Colaborador COMARA — consulta segura de banco de horas, insalubridade e contracheques SPTF.",
+  "start_url": "/portal",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "window-controls-overlay"],
@@ -57,17 +57,10 @@
   ],
   "shortcuts": [
     {
-      "name": "Dashboard Banco de Horas",
-      "short_name": "Dashboard",
-      "description": "Visualizar indicadores de horas e efetivo",
-      "url": "/?tab=dashboard",
-      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Portal do Colaborador",
-      "short_name": "Portal",
-      "description": "Acesso ao extrato individual e contracheques",
-      "url": "/?tab=portal_colaborador",
+      "name": "Consultar Banco de Horas",
+      "short_name": "Banco de Horas",
+      "description": "Acessar extrato individual de horas e saldo",
+      "url": "/portal",
       "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
     }
   ]

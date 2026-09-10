@@ -14,8 +14,7 @@ import {
   ShieldCheck, 
   Lock, 
   User, 
-  Key, 
-  CheckCircle2, 
+  CheckCircle2,
   AlertCircle, 
   Eye, 
   EyeOff, 
@@ -50,7 +49,6 @@ interface CollaboratorLandingViewProps {
   records: TimeRecord[];
   insalubrityRecords?: InsalubrityRecord[];
   paystubs?: PaystubRecord[];
-  onOpenAdminLogin: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
   onViewAttachment?: (attachment: Attachment, empName?: string, recordDate?: string) => void;
@@ -61,7 +59,6 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
   records,
   insalubrityRecords = [],
   paystubs = [],
-  onOpenAdminLogin,
   theme,
   onToggleTheme,
   onViewAttachment,
@@ -315,7 +312,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
           </div>
         </div>
 
-        {/* Top Right: PWA Install, Theme Toggle & Discrete Admin Access Button */}
+        {/* Top Right: PWA Install & Theme Toggle */}
         <div className="flex items-center space-x-1.5 sm:space-x-2.5">
           <PWAInstallButton variant="navbar" theme={theme} />
 
@@ -333,21 +330,7 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
             {isDark ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
           </button>
 
-          {/* Botão Discreto de Acesso Administrativo/Gestão */}
-          <button
-            type="button"
-            onClick={onOpenAdminLogin}
-            className={`flex items-center gap-1.5 py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer ${
-              isDark 
-                ? 'text-gray-300 hover:text-white hover:bg-blue-950/50 border border-transparent hover:border-blue-800/60' 
-                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 border border-transparent hover:border-blue-200'
-            }`}
-            title="Acesso exclusivo para Gestores e RH"
-          >
-            <Key className="w-3.5 h-3.5 text-blue-500" />
-            <span className="hidden sm:inline">Acesso Gestão</span>
-            <span className="sm:hidden text-[10px]">Gestor</span>
-          </button>
+
         </div>
       </header>
 
@@ -509,19 +492,6 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
 
               </form>
 
-            </div>
-
-            {/* Acesso ao Módulo Administrativo para Gestores */}
-            <div className="text-center pt-0.5">
-              <a
-                href="/admin"
-                className={`inline-flex items-center gap-1.5 text-xs font-semibold underline underline-offset-4 transition-colors ${
-                  isDark ? 'text-slate-400 hover:text-blue-300' : 'text-slate-600 hover:text-blue-600'
-                }`}
-              >
-                <Key className="w-3.5 h-3.5 text-blue-500" />
-                <span>É gestor, encarregado ou fiscal de obra? <strong>Acessar Módulo Administrativo &rarr;</strong></span>
-              </a>
             </div>
 
             {/* No Mobile: Botão/Ícone Compacto com Instruções LGPD & Regras SPTF */}
@@ -1384,14 +1354,6 @@ export const CollaboratorLandingView: React.FC<CollaboratorLandingViewProps> = (
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>© COMARA • Sistema de Banco de Horas SPTF • LGPD Segura</span>
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={onOpenAdminLogin}
-              className="sm:hidden hover:underline flex items-center gap-1 text-slate-400 hover:text-blue-400 font-medium transition-colors cursor-pointer text-[11px]"
-            >
-              <Key className="w-3 h-3 text-blue-500" />
-              <span>Acesso Gestão</span>
-            </button>
             <span className="font-mono text-[11px]">Sedes: KO (Coari) • BE (Belém) • MN (Manaus)</span>
           </div>
         </div>
