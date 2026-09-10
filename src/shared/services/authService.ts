@@ -468,8 +468,7 @@ export const authService = {
       }
     }
 
-    const allowLegacyAuth = Boolean((import.meta as any).env?.DEV) && typeof window !== 'undefined' &&
-      ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const allowLegacyAuth = Boolean((import.meta as any).env?.DEV);
     if (!allowLegacyAuth) {
       return { success: false, message: 'A autenticação do portal ainda não está configurada neste domínio.' };
     }
