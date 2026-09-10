@@ -97,8 +97,6 @@ const firebaseConfig = {
   appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseAppletConfig?.appId || '',
 };
 
-// App Check is intentionally disabled because it is unavailable on the AI Studio Starter Plan.
-// To re-enable it after upgrading, add the firebase/app-check import and initializeAppCheck here.
 // Initialize Firebase with environment configuration
 const app = initializeApp(firebaseConfig);
 
