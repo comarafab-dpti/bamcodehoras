@@ -23,7 +23,7 @@ import { SettingsPage } from './admin/SettingsPage';
 import { BackupRestorePanel } from './admin/BackupRestorePanel';
 import { GoogleArchitectureSpec } from './admin/GoogleArchitectureSpec';
 import { AdminLockScreen } from './admin/AdminLockScreen';
-import { LoginView } from './admin/LoginView';
+import { AdminLoginModal } from './admin/AdminLoginModal';
 import { DailyEntryModal } from './admin/DailyEntryModal';
 import { QuickBatchEntryModal } from './admin/QuickBatchEntryModal';
 import { SptfDispensaModal } from './admin/SptfDispensaModal';
@@ -81,6 +81,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [userRole, setUserRole] = useState<AdminRole | null>(null);
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
   const [isVerifyingPermissions, setIsVerifyingPermissions] = useState(false);
   const [pendingAccessUser, setPendingAccessUser] = useState<{ email: string; nome: string; foto?: string | null; status?: 'pendente' | 'inativo' | 'bloqueado' } | null>(null);
   const [isViewingManualModal, setIsViewingManualModal] = useState(false);
@@ -537,13 +538,21 @@ export default function App() {
   // -------------------------------------------------------------
   useEffect(() => {
     if (isAuthLoading) return;
-    // Preserva /admin aguardando login de gestão.
+    // Preserva /admin aguardando login de gestão (modal aberto abaixo)
     if (!currentUser && window.location.pathname.startsWith('/admin')) return;
     const target = currentUser ? '/admin' : '/portal';
     if (window.location.pathname !== target) {
       window.history.replaceState({}, '', target);
     }
   }, [currentUser, isAuthLoading]);
+
+  // Acesso direto à rota /admin sem sessão abre o login de gestão imediatamente
+  useEffect(() => {
+    if (!isAuthLoading && !currentUser && window.location.pathname.startsWith('/admin')) {
+      setIsAdminLoginModalOpen(true);
+    }
+  }, [isAuthLoading, currentUser]);
+
 
   // -------------------------------------------------------------
   // 2. Monitor and Enforce Strict RBAC on Authentication State
@@ -919,6 +928,7 @@ export default function App() {
     setUserRole(null);
     setUserMode('ADMIN');
     setActiveTab('extrato');
+    setIsAdminLoginModalOpen(false);
     setIsViewingManualModal(false);
     setIsDailyEntryModalOpen(false);
     setIsQuickBatchModalOpen(false);
@@ -1849,11 +1859,15 @@ export default function App() {
   // O entry administrativo nunca renderiza a experiência do colaborador.
   if (!currentUser) {
     return (
-      <LoginView
-        onOpenSelfService={() => window.location.assign('/portal')}
-        onLoginSuccess={() => window.location.reload()}
-        theme={theme}
-      />
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <AdminLoginModal
+          isOpen
+          onClose={() => undefined}
+          onGoogleSignIn={handleGoogleSignIn}
+          onDevAdminSignIn={handleDevAdminSignIn}
+          isDark={isDark}
+        />
+      </div>
     );
   }
 

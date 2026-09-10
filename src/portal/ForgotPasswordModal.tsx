@@ -403,7 +403,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
         {/* Footer info */}
         <div className={`pt-2 text-center text-[11px] ${isDark ? 'text-[#94A3B8]' : 'text-slate-500'}`}>
-          <span>Em caso de dúvidas cadastrais, consulte o suporte responsável pelo seu cadastro.</span>
+          <span>Em caso de dúvidas cadastrais, consulte a Divisão de Administração (DA / RH).</span>
         </div>
       </div>
     </div>
